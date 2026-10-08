@@ -1,0 +1,2 @@
+# Vendored third-party files must stay byte-identical (checksums in SOURCE.txt).
+web/vendor/** -text
