@@ -9,10 +9,10 @@ inaccuracy of each game, groups those by position and writes `web/positions.json
 
 ## Quick start
 
-Requires [uv](https://docs.astral.sh/uv/) and Windows (the engine download is the Windows build).
+Requires [uv](https://docs.astral.sh/uv/). Works on Windows, Linux and macOS (see [Stockfish](#stockfish)).
 
 ```sh
-uv run trainer setup     # download Stockfish into tools/stockfish/
+uv run trainer setup     # download Stockfish for this platform into tools/stockfish/
 uv run trainer update    # fetch games + analyse -> web/positions.json
 uv run trainer serve     # open the trainer at http://127.0.0.1:8000/
 ```
@@ -20,6 +20,43 @@ uv run trainer serve     # open the trainer at http://127.0.0.1:8000/
 The first `update` analyses the 2,000 most recent games at depth 18, which takes a while.
 It can be interrupted at any time: downloaded games and engine results are kept, and a re-run
 continues where it stopped.
+
+## Stockfish
+
+The engine is looked up in this order:
+
+1. `STOCKFISH_PATH` environment variable, if set (must point to the binary)
+2. `tools/stockfish/stockfish.exe` (Windows) or `tools/stockfish/stockfish` (Linux/macOS), installed by `uv run trainer setup`
+3. `stockfish` on your `PATH`
+
+`uv run trainer setup` downloads the latest official release for your OS and CPU:
+
+| Platform | Release asset |
+|---|---|
+| Windows x86-64 / arm64 | `stockfish-windows-x86-64-universal.zip` / `stockfish-windows-arm64-universal.zip` |
+| Linux x86-64 / arm64 | `stockfish-linux-x86-64-universal.tar.gz` / `stockfish-linux-arm64-universal.tar.gz` |
+| macOS (Intel and Apple Silicon) | `stockfish-macos-universal.tar.gz` |
+
+### Installing it yourself
+
+Any UCI Stockfish works. The cache keys results by engine version, so switching engines never mixes evals.
+
+- **Ubuntu/Debian:** `sudo apt install stockfish` installs `/usr/games/stockfish`. `/usr/games` is
+  on `PATH` in a normal login shell; otherwise `export STOCKFISH_PATH=/usr/games/stockfish`.
+  The distro package can be a few versions old, which is fine for opening analysis.
+- **macOS:** `brew install stockfish`.
+- **Manual download (any OS):** get the archive for your platform from
+  <https://github.com/official-stockfish/Stockfish/releases/latest>, extract it, and either copy the
+  binary to `tools/stockfish/stockfish` (`stockfish.exe` on Windows) or point `STOCKFISH_PATH` at it.
+  On Linux/macOS make it executable:
+  ```sh
+  tar xzf stockfish-linux-x86-64-universal.tar.gz
+  mkdir -p tools/stockfish
+  cp stockfish/stockfish-linux-x86-64-universal tools/stockfish/stockfish
+  chmod +x tools/stockfish/stockfish
+  ```
+
+Check it works: `printf 'uci\nquit\n' | tools/stockfish/stockfish` should print `uciok`.
 
 ## Options
 

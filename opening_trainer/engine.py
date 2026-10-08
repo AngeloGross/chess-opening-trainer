@@ -12,7 +12,7 @@ import chess
 import chess.engine
 
 from . import DATA_DIR
-from .setup_engine import ENGINE_PATH
+from .setup_engine import find_engine, missing_engine_message
 
 CACHE_PATH = DATA_DIR / "evals.sqlite"
 SCHEMA_VERSION = 2
@@ -99,12 +99,13 @@ class Engine:
     def __init__(
         self,
         depth: int,
-        engine_path: Path = ENGINE_PATH,
+        engine_path: Path | None = None,
         cache: EvalCache | None = None,
         launcher: Callable[[Path], chess.engine.SimpleEngine] = _popen,
     ):
-        if not engine_path.exists():
-            raise EngineMissingError(f"Stockfish not found at {engine_path}. Run `uv run trainer setup` first.")
+        engine_path = engine_path or find_engine()
+        if engine_path is None or not engine_path.is_file():
+            raise EngineMissingError(missing_engine_message())
         self.depth = depth
         self._path = engine_path
         self._launcher = launcher

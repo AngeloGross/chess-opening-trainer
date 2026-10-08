@@ -104,3 +104,10 @@ def test_write_positions_uses_temp_outside_target_dir(tmp_path):
     assert doc["games"] == 1 and doc["positions"] == [{"key": KEY}]
     assert sorted(p.name for p in web.iterdir()) == ["positions.json"]
     assert list(data.iterdir()) == []
+
+
+def test_aggregate_reports_progress_per_position():
+    results = [(_game(i), _result(_mistake("d7d5", "d5", 30, key=f"k{i}"))) for i in range(3)]
+    calls = []
+    aggregate(results, lambda fen: [], threshold=20, on_progress=lambda n, total: calls.append((n, total)))
+    assert calls == [(1, 3), (2, 3), (3, 3)]

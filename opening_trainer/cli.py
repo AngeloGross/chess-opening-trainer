@@ -18,7 +18,7 @@ from .aggregate import POSITIONS_PATH, aggregate, write_positions
 from .analyse import analyse_game
 from .engine import Engine, EngineAnalysisError, EngineMissingError
 from .fetch import FetchError, fetch, games_path, is_supported, read_games
-from .setup_engine import ENGINE_PATH, SetupError, install
+from .setup_engine import SetupError, find_engine, install, missing_engine_message
 
 DEFAULT_USER = "AngelOgro"
 DEFAULT_PERFS = "blitz,rapid,classical"
@@ -124,8 +124,17 @@ def cmd_analyse(args: argparse.Namespace) -> None:
             f" (cache hits {engine.cache_hits}, engine {engine.engine_calls})"
         )
 
-        entries = aggregate(results, engine.top_moves, args.threshold)
-        print(f"MultiPV on {len(entries)} mistake positions: engine calls now {engine.engine_calls}")
+        # The MultiPV pass is slow at full depth, so it gets its own progress line.
+        multipv_progress = Progress(every=10)
+        entries = aggregate(
+            results,
+            engine.top_moves,
+            args.threshold,
+            on_progress=lambda n, total: multipv_progress.show(
+                n, f"Alternatives {n}/{total} mistake positions | engine calls {engine.engine_calls}"
+            ),
+        )
+        multipv_progress.done(f"MultiPV on {len(entries)} mistake positions: engine calls now {engine.engine_calls}")
 
     if not results:
         print(f"None of the selected games were played by {args.user}; {POSITIONS_PATH.name} left unchanged.")
@@ -148,8 +157,8 @@ def cmd_analyse(args: argparse.Namespace) -> None:
 
 
 def cmd_update(args: argparse.Namespace) -> None:
-    if not ENGINE_PATH.exists():  # fail before a long download, not after it
-        raise EngineMissingError(f"Stockfish not found at {ENGINE_PATH}. Run `uv run trainer setup` first.")
+    if find_engine() is None:  # fail before a long download, not after it
+        raise EngineMissingError(missing_engine_message())
     cmd_fetch(args)
     cmd_analyse(args)
 
@@ -196,7 +205,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="trainer", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p = sub.add_parser("setup", help="download Stockfish into tools/stockfish/")
+    p = sub.add_parser("setup", help="download Stockfish for this platform into tools/stockfish/")
     p.add_argument("--force", action="store_true", help="reinstall even if present")
     p.set_defaults(func=cmd_setup)
 

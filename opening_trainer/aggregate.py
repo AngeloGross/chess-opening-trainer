@@ -22,6 +22,7 @@ MAX_GAME_URLS = 5
 LOSS_CAP = 500
 
 TopMoves = Callable[[str], list[tuple[str, int]]]
+OnProgress = Callable[[int, int], None]  # (done, total)
 
 
 @dataclass
@@ -54,6 +55,7 @@ def aggregate(
     results: Iterable[tuple[dict, GameResult]],
     top_moves: TopMoves,
     threshold: int,
+    on_progress: OnProgress | None = None,
 ) -> list[dict]:
     reached: Counter[str] = Counter()
     buckets: dict[str, _Bucket] = {}
@@ -74,7 +76,7 @@ def aggregate(
             b.game_urls.append(game_url(game, res.color, m.ply))
 
     entries = []
-    for key, b in buckets.items():
+    for i, (key, b) in enumerate(buckets.items(), 1):
         errors = len(b.losses)
         capped = [min(loss, LOSS_CAP) for loss in b.losses]
         avg_loss = sum(capped) / errors
@@ -108,6 +110,8 @@ def aggregate(
                 "games": b.game_urls,
             }
         )
+        if on_progress:
+            on_progress(i, len(buckets))
     entries.sort(key=lambda e: (-e["score"], -e["errors"], e["key"]))
     return entries
 

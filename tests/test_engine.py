@@ -43,7 +43,7 @@ def _engine(engine_file, tmp_path, uci, depth=10):
 
 
 def test_missing_engine_says_to_run_setup(tmp_path):
-    with pytest.raises(EngineMissingError, match="uv run trainer setup"):
+    with pytest.raises(EngineMissingError, match="trainer setup"):
         Engine(10, tmp_path / "nope.exe", EvalCache(tmp_path / "evals.sqlite"))
 
 
