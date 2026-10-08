@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analysis Spike</title>
+  <style>
+    :root { --bg: #fff; --fg: #1d1d1f; --muted: #6b6b70; --ok: #1a7f37; --err: #c62828; --line: #e3e3e6; --field: #f5f5f7; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1b1b1d; --fg: #ececf0; --muted: #a0a0a8; --ok: #5bd17a; --err: #ff7a7a; --line: #333338; --field: #26262a; } }
+    body { margin: 0; padding: 16px; font: 15px/1.45 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+    main { max-width: 860px; margin: 0 auto; }
+    form { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; align-items: end; }
+    label { display: flex; flex-direction: column; font-size: 13px; color: var(--muted); }
+    input, select, button { font: inherit; padding: 6px 10px; color: var(--fg); background: var(--field); border: 1px solid var(--line); border-radius: 4px; }
+    input[type=number] { width: 5em; }
+    button { cursor: pointer; } button:disabled { opacity: .5; cursor: default; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+    #status { color: var(--muted); } #status.ok { color: var(--ok); } #status.err { color: var(--err); }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 8px 0; font-variant-numeric: tabular-nums; }
+    dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
+    .table { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 500; font-size: 13px; } td.num, th.num { text-align: right; }
+    #log { padding-left: 1.4em; } #log li { color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Analysis spike</h1>
+  <p>Design slice 5: analysis coordinator over the games stored by <a href="fetch.html">fetch.html</a>, with the eval cache
+    in IndexedDB. Reload mid-run, then Start again: finished games and searches are not repeated.</p>
+  <form id="form">
+    <label>Lichess name <input id="user" required autocomplete="off"></label>
+    <label>Games <input id="max" type="number" min="1" max="5000"></label>
+    <label>Depth <input id="depth" type="number" min="1" max="30"></label>
+    <label>MultiPV <select id="mode"><option value="eager">eager</option><option value="lazy">lazy (top 30)</option></select></label>
+    <label>Workers <input id="workers" type="number" min="1" max="16"></label>
+    <label>Perf types <input id="perfs" value="blitz,rapid,classical" style="width: 13em"></label>
+    <div class="buttons">
+      <button id="fetch" type="button">Fetch first</button>
+      <button id="start">Start</button>
+      <button id="pause" type="button" disabled>Pause</button>
+      <button id="resume" type="button" disabled>Resume</button>
+      <button id="stop" type="button" disabled>Stop</button>
+      <button id="download" type="button" disabled>Download positions.json</button>
+    </div>
+  </form>
+  <p id="status" role="status">Enter a name.</p>
+  <dl>
+    <dt>Stored games</dt><dd id="stored">–</dd>
+    <dt>Engine</dt><dd id="engine">–</dd>
+    <dt>Run key</dt><dd id="runKey">–</dd>
+    <dt>Games</dt><dd id="games">–</dd>
+    <dt>Positions</dt><dd id="positions">–</dd>
+    <dt>Cache hits / engine</dt><dd id="cache">–</dd>
+    <dt>MultiPV</dt><dd id="multipv">–</dd>
+    <dt>Elapsed / ETA</dt><dd id="time">–</dd>
+    <dt>Checkpoints</dt><dd id="checkpoints">–</dd>
+  </dl>
+  <h2>Top 10 positions <small id="docInfo"></small></h2>
+  <div class="table">
+    <table>
+      <thead><tr><th class="num">#</th><th>Opening</th><th>Best</th><th class="num">Errors / reached</th><th class="num">Score</th></tr></thead>
+      <tbody id="top"></tbody>
+    </table>
+  </div>
+  <h2>Log</h2>
+  <ul id="log"></ul>
+</main>
+<script type="module">
+import { Coordinator, defaultOptions } from '../analysis/coordinator.js';
+import { EnginePool, defaultWorkerCount } from '../engine/pool.js';
+import { countGames, getFetchState, getPositions, getSetting, openDb, setSetting } from '../store/db.js';
+
+const $ = (id) => document.getElementById(id);
+const db = await openDb();
+const defaults = defaultOptions();
+/** State for the headless check (CDP) and the console. */
+const state = window.analysis = { progress: null, doc: null, gameIds: [], log: [], runs: 0 };
+/** @type {Coordinator|null} */
+let co = null;
+/** @type {EnginePool|null} */
+let pool = null;
+
+function status(text, cls = '') { const el = $('status'); el.textContent = text; el.className = cls; }
+function log(text) {
+  state.log.push(text);
+  const li = document.createElement('li');
+  li.textContent = `${new Date().toLocaleTimeString()}  ${text}`;
+  $('log').prepend(li);
+}
+const sec = (ms) => (ms === null || ms === undefined ? '–' : `${(ms / 1000).toFixed(1)} s`);
+const perfs = () => $('perfs').value.split(',').map((p) => p.trim()).filter(Boolean);
+const user = () => $('user').value.trim();
+const counts = (p) => `games ${p.gamesDone}/${p.gamesTotal} (resumed ${p.gamesResumed}), positions ${p.positions}, `
+  + `cache hits ${p.cacheHits}, engine ${p.engineSearches}, shared ${p.shared}, MultiPV ${p.multipvDone}/${p.multipvTotal}`;
+
+function buttons(running) {
+  $('start').disabled = running; $('fetch').disabled = running;
+  $('pause').disabled = !running; $('stop').disabled = !running; $('resume').disabled = true;
+}
+
+async function refreshStored() {
+  if (!user()) return;
+  $('stored').textContent = String(await countGames(db, user()));
+}
+
+function showProgress(p) {
+  state.progress = p;
+  $('engine').textContent = p.engineId ?? '–';
+  $('runKey').textContent = p.runKey ?? '–';
+  $('games').textContent = `${p.gamesDone} / ${p.gamesTotal} (${p.gamesResumed} from an earlier run) · ${p.state}`;
+  $('positions').textContent = `${p.positions} analysed, ${p.terminal} terminal, ${p.mistakes} mistake positions`;
+  $('cache').textContent = `${p.cacheHits} cache hits / ${p.engineSearches} engine searches (${p.shared} shared in flight)`;
+  $('multipv').textContent = `${p.multipvDone} / ${p.multipvTotal}`;
+  $('time').textContent = `${sec(p.elapsedMs)} / ${sec(p.etaMs)}`;
+  $('checkpoints').textContent = String(p.checkpoints);
+  if (p.state === 'running') status(`Analysing… ${counts(p)}`);
+  if (p.state === 'paused') status(`Paused. ${counts(p)}`);
+}
+
+function showDoc(doc) {
+  state.doc = doc;
+  $('download').disabled = !doc;
+  if (!doc) { $('top').replaceChildren(); $('docInfo').textContent = ''; return; }
+  $('docInfo').textContent = `(${doc.positions.length} positions, ${doc.games} games, ${doc.clean_games} clean, ${doc.generated})`;
+  $('top').replaceChildren(...doc.positions.slice(0, 10).map((e, i) => {
+    const tr = document.createElement('tr');
+    for (const [text, cls] of [[i + 1, 'num'], [`${e.eco} ${e.opening}`], [e.best_san], [`${e.errors} / ${e.reached}`, 'num'], [e.score.toFixed(1), 'num']]) {
+      const td = document.createElement('td');
+      td.textContent = String(text);
+      if (cls) td.className = cls;
+      tr.append(td);
+    }
+    return tr;
+  }));
+}
+
+/** Fetch first: the slice-4 fetch worker, up to `max` games. Resolves when it ends. */
+function fetchFirst() {
+  return new Promise((resolve) => {
+    const worker = new Worker(new URL('../lichess/fetch.worker.js', import.meta.url), { type: 'module' });
+    buttons(true); $('pause').disabled = true;
+    $('stop').disabled = false;
+    $('stop').onclick = () => worker.postMessage({ type: 'stop' });
+    const end = (ok) => { worker.terminate(); buttons(false); $('stop').onclick = null; refreshStored(); resolve(ok); };
+    worker.onmessage = ({ data: m }) => {
+      const c = `stored ${m.stored}, added ${m.added}, requests ${m.requests}`;
+      if (m.type === 'user') { $('user').value = m.name; log(`fetch: user ${m.name}`); }
+      else if (m.type === 'progress') { status(`Fetching… ${c}`); refreshStored(); }
+      else if (m.type === 'note') log(`fetch: ${m.message}`);
+      else if (m.type === 'retry') status(`${m.message} Retrying in ${m.delayMs / 1000} s.`, 'err');
+      else if (m.type === 'done') { log(`fetch done: ${c}`); status(`Fetch done: ${c}`, 'ok'); end(true); }
+      else if (m.type === 'stopped') { log(`fetch stopped: ${c}`); status(`Fetch stopped: ${c}`); end(false); }
+      else if (m.type === 'error') { log(`fetch error ${m.kind}: ${m.message}`); status(`${m.message} [${m.kind}]`, 'err'); end(false); }
+    };
+    worker.onerror = (e) => { status(`Fetch worker failed: ${e.message}`, 'err'); end(false); };
+    status('Checking user…');
+    const max = Number($('max').value);
+    worker.postMessage({ type: 'start', user: user(), perfs: perfs(), maxGames: max > 0 ? max : null, since: null });
+  });
+}
+
+async function start() {
+  const name = (await getFetchState(db, user()))?.user ?? user();
+  await setSetting(db, 'lastUser', name);
+  const workers = Number($('workers').value) || defaultWorkerCount();
+  pool ??= new EnginePool({ size: workers });
+  buttons(true);
+  status('Starting engines…');
+  const t0 = performance.now();
+  state.runs += 1;
+  co = new Coordinator({
+    db, pool, user: name,
+    options: { perfs: perfs(), maxGames: Number($('max').value) || null, depth: Number($('depth').value) || undefined, multipv: $('mode').value },
+    onProgress: showProgress,
+    onCheckpoint: showDoc,
+  });
+  try {
+    const run = co.run();
+    await co.init();
+    log(`start: ${name}, depth ${co.opts.depth}, ${co.opts.maxGames} games, MultiPV ${co.opts.multipv}, ${pool.workers} workers, run key ${co.runKey}`);
+    const { state: end, progress: p } = await run;
+    state.gameIds = co.games.map((g) => g.id);
+    const text = `${end === 'done' ? 'Done' : 'Stopped'} in ${sec(performance.now() - t0)}: ${counts(p)}`;
+    log(text);
+    status(text, end === 'done' ? 'ok' : '');
+  } catch (err) {
+    log(`error: ${err.message}`);
+    status(`Analysis failed: ${err.message}`, 'err');
+  } finally {
+    state.gameIds = co.games.map((g) => g.id);
+    buttons(false);
+  }
+}
+
+$('form').addEventListener('submit', (ev) => { ev.preventDefault(); start(); });
+$('fetch').addEventListener('click', () => fetchFirst());
+$('pause').addEventListener('click', () => { co?.pause(); $('pause').disabled = true; $('resume').disabled = false; });
+$('resume').addEventListener('click', () => { co?.resume(); $('pause').disabled = false; $('resume').disabled = true; });
+$('stop').addEventListener('click', () => { if (!$('stop').onclick) co?.stop(); });
+$('download').addEventListener('click', () => {
+  if (!state.doc) return;
+  const url = URL.createObjectURL(new Blob([JSON.stringify(state.doc, null, 1)], { type: 'application/json' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'positions.json' });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+$('user').addEventListener('change', async () => { await refreshStored(); showDoc((await getPositions(db, user())) ?? null); });
+
+// ?user=Name&max=100&depth=12&mode=lazy&workers=3&fetch=1&auto=1 (fetch=1: "Fetch first" before the analysis).
+const qs = new URLSearchParams(location.search);
+$('user').value = qs.get('user') ?? (await getSetting(db, 'lastUser')) ?? '';
+$('max').value = qs.get('max') ?? defaults.maxGames;
+$('depth').value = qs.get('depth') ?? defaults.depth;
+$('mode').value = qs.get('mode') ?? defaults.multipv;
+$('workers').value = qs.get('workers') ?? defaultWorkerCount();
+if (qs.get('perfs')) $('perfs').value = qs.get('perfs');
+await refreshStored();
+if (user()) showDoc((await getPositions(db, user())) ?? null);
+if (qs.get('auto') && user()) {
+  if (qs.get('fetch')) await fetchFirst();
+  start();
+}
+</script>
+</body>
+</html>

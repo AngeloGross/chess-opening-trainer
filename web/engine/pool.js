@@ -17,13 +17,21 @@ export class EngineAnalysisError extends Error {
 }
 
 /**
+ * A phone or tablet, judged by the user agent (design §8: fewer workers and cheaper analysis defaults).
+ * @param {{userAgent?: string, userAgentData?: {mobile?: boolean}}} [nav]
+ * @returns {boolean}
+ */
+export function isMobile(nav = globalThis.navigator ?? {}) {
+  return nav.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/i.test(nav.userAgent ?? '');
+}
+
+/**
  * Workers to start: min(hardwareConcurrency − 1, 4) on desktop, 2 on a mobile user agent, at least 1.
  * @param {{hardwareConcurrency?: number, userAgent?: string, userAgentData?: {mobile?: boolean}}} [nav]
  * @returns {number}
  */
 export function defaultWorkerCount(nav = globalThis.navigator ?? {}) {
-  const mobile = nav.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/i.test(nav.userAgent ?? '');
-  if (mobile) return 2;
+  if (isMobile(nav)) return 2;
   const cores = Number(nav.hardwareConcurrency) || 2;
   return Math.max(1, Math.min(cores - 1, 4));
 }

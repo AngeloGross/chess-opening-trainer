@@ -242,3 +242,59 @@ export async function requestPersistence(nav = globalThis.navigator) {
   if (await nav.storage.persisted?.()) return true;
   return nav.storage.persist();
 }
+
+// ---- evals + results + positions (analysis coordinator, slice 5) ----
+
+/**
+ * @typedef {[string|null, number]} EvalLine
+ * @typedef {{engineId: string, fenKey: string, depth: number, multipv: number, lines: EvalLine[]}} EvalRow
+ * @typedef {{userId: string, runKey: string, gameId: string, createdAt: number, color: 'white'|'black'|null,
+ *   reached: string[], mistake: object|null}} ResultRow  color null: the game had no result (not his, no moves)
+ */
+
+/**
+ * One cached search, or undefined.
+ * @param {IDBDatabase} db @param {string} engineId @param {string} key @param {number} depth @param {number} multipv
+ * @returns {Promise<EvalRow|undefined>}
+ */
+export function getEval(db, engineId, key, depth, multipv) {
+  return request(db.transaction('evals').objectStore('evals').get([engineId, key, depth, multipv]));
+}
+
+/**
+ * Write cached searches and finished-game results in one transaction. A result row therefore never
+ * commits without the evals that were written before it, so a resume can trust it.
+ * @param {IDBDatabase} db @param {{evals?: EvalRow[], results?: ResultRow[]}} batch
+ */
+export async function writeAnalysisBatch(db, { evals = [], results = [] }) {
+  if (!evals.length && !results.length) return;
+  const tx = db.transaction(['evals', 'results'], 'readwrite');
+  const committed = done(tx);
+  try {
+    for (const row of evals) tx.objectStore('evals').put(row);
+    for (const row of results) tx.objectStore('results').put(row);
+  } catch (err) {
+    tx.abort();
+    committed.catch(() => {});
+    throw err;
+  }
+  await committed;
+}
+
+/** Every result row of one user and run. @param {IDBDatabase} db @param {string} user @param {string} runKey @returns {Promise<ResultRow[]>} */
+export function getResults(db, user, runKey) {
+  const userId = userIdOf(user);
+  return request(db.transaction('results').objectStore('results').getAll(IDBKeyRange.bound([userId, runKey], [userId, runKey, []])));
+}
+
+/** The positions.json document of a user, or undefined. @param {IDBDatabase} db @param {string} user */
+export function getPositions(db, user) {
+  return request(db.transaction('positions').objectStore('positions').get(userIdOf(user)));
+}
+
+/** @param {IDBDatabase} db @param {string} user @param {object} doc */
+export async function putPositions(db, user, doc) {
+  const tx = db.transaction('positions', 'readwrite');
+  tx.objectStore('positions').put(doc, userIdOf(user));
+  await done(tx);
+}
