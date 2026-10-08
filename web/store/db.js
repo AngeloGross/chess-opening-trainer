@@ -234,13 +234,95 @@ export async function setSetting(db, name, value) {
 
 /**
  * Ask the browser to keep this site's storage under pressure (design §3.3). Chromium and Safari
- * answer silently, Firefox prompts, so call it from a user action. Not called automatically yet.
+ * answer silently, Firefox may prompt. The app calls it after the first analysis checkpoint and after
+ * an import (slice 8). Missing API (old browser, plain-HTTP origin) or a failure: false, never an error.
  * @returns {Promise<boolean>} true if storage is (now) persistent
  */
 export async function requestPersistence(nav = globalThis.navigator) {
-  if (!nav?.storage?.persist) return false;
-  if (await nav.storage.persisted?.()) return true;
-  return nav.storage.persist();
+  try {
+    if (!nav?.storage?.persist) return false;
+    if (await nav.storage.persisted?.()) return true;
+    return await nav.storage.persist();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * What the Data panel shows about storage, without asking for anything.
+ * @returns {Promise<{supported: boolean, persisted: boolean|null, usage: number|null, quota: number|null}>}
+ *   supported false: no StorageManager here (old browser, or an insecure origin such as plain-HTTP LAN)
+ */
+export async function storageInfo(nav = globalThis.navigator) {
+  const sm = nav?.storage;
+  if (!sm) return { supported: false, persisted: null, usage: null, quota: null };
+  const [persisted, estimate] = await Promise.all([
+    sm.persisted ? sm.persisted().catch(() => null) : null,
+    sm.estimate ? sm.estimate().catch(() => null) : null,
+  ]);
+  return { supported: true, persisted, usage: estimate?.usage ?? null, quota: estimate?.quota ?? null };
+}
+
+// ---- backup export / import (slice 8; the format is in core/backup.js) ----
+
+/**
+ * One user's stored data for a backup. `full` adds games, fetch state, analysis results and the whole
+ * eval cache (shared by all users, so it is not filtered).
+ * @param {IDBDatabase} db @param {string} user @param {{full?: boolean}} [opts]
+ */
+export async function exportUserData(db, user, { full = false } = {}) {
+  const userId = userIdOf(user);
+  const stores = full ? ['positions', 'fetchState', 'games', 'results', 'evals'] : ['positions'];
+  const tx = db.transaction(stores);
+  const positions = request(tx.objectStore('positions').get(userId));
+  if (!full) return { positions: (await positions) ?? null };
+  const [doc, fetchState, games, results, evals] = await Promise.all([
+    positions,
+    request(tx.objectStore('fetchState').get(userId)),
+    request(tx.objectStore('games').getAll(userKeys(userId))),
+    request(tx.objectStore('results').getAll(userKeys(userId))),
+    request(tx.objectStore('evals').getAll()),
+  ]);
+  return { positions: doc ?? null, fetchState: fetchState ?? null, games, results, evals };
+}
+
+/**
+ * Write imported data of one user in one transaction. `replace` first deletes the user's games, fetch
+ * state and results (only when the import brings games, i.e. a full backup) and always sets `positions`
+ * (deleting it when null). `merge` upserts rows, keeps an existing fetch state, and writes `positions`
+ * only when given. Evals are always upserted (a cache row is the same for everyone).
+ * @param {IDBDatabase} db @param {string} user
+ * @param {{positions?: any, fetchState?: any, games?: any[], results?: any[], evals?: any[]}} data
+ * @param {'merge'|'replace'} mode
+ */
+export async function importUserData(db, user, data, mode) {
+  const userId = userIdOf(user);
+  const full = Array.isArray(data.games);
+  const tx = db.transaction(['positions', 'fetchState', 'games', 'results', 'evals'], 'readwrite');
+  const committed = done(tx);
+  try {
+    if (mode === 'replace' && full) {
+      tx.objectStore('games').delete(userKeys(userId));
+      tx.objectStore('fetchState').delete(userId);
+      tx.objectStore('results').delete(userKeys(userId));
+    }
+    if (data.positions) tx.objectStore('positions').put(data.positions, userId);
+    else if (mode === 'replace') tx.objectStore('positions').delete(userId);
+    for (const g of data.games ?? []) tx.objectStore('games').put({ ...g, userId });
+    for (const r of data.results ?? []) tx.objectStore('results').put({ ...r, userId });
+    for (const e of data.evals ?? []) tx.objectStore('evals').put(e);
+    if (data.fetchState) {
+      const fs = tx.objectStore('fetchState');
+      const row = { ...data.fetchState, userId };
+      if (mode === 'replace') fs.put(row);
+      else fs.get(userId).onsuccess = (ev) => { if (!ev.target.result) fs.put(row); };
+    }
+  } catch (err) {
+    tx.abort();
+    committed.catch(() => {});
+    throw err;
+  }
+  await committed;
 }
 
 // ---- evals + results + positions (analysis coordinator, slice 5) ----

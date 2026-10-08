@@ -178,9 +178,17 @@ class _Server(http.server.ThreadingHTTPServer):
 
 
 class _Handler(http.server.SimpleHTTPRequestHandler):
-    """Static files, with .wasm pinned to application/wasm: the Windows registry can override mimetypes."""
+    """Static files, with .wasm and .mjs types pinned: the Windows registry can override mimetypes.
 
-    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map, ".wasm": "application/wasm"}
+    Browsers refuse a module script served as text/plain, which Windows reports for .mjs (the vendored
+    QR code library is an .mjs file).
+    """
+
+    extensions_map = {
+        **http.server.SimpleHTTPRequestHandler.extensions_map,
+        ".wasm": "application/wasm",
+        ".mjs": "text/javascript",
+    }
 
     def end_headers(self) -> None:
         # Revalidate every file, so an updated page never runs with stale cached modules.

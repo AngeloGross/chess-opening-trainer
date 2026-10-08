@@ -10,11 +10,20 @@
 //   newer games and analyses only games without a result for the same settings (the coordinator resumes).
 // - Served by `trainer serve`: an existing web/positions.json is offered as "Use analysis from the command
 //   line"; that choice is remembered, so the next visit shows it directly (design §10).
+// - Data panel (dataPanel.js, slice 8): storage state, backup export/import, "Load analysis file" and
+//   "Send to phone". An import stores the document like a browser analysis (source 'browser') plus an
+//   import marker (store/backupStore.js), so the bar says where it came from and "Update" stays hidden.
+// - A "Send to phone" link (`#import=…`) is imported at start-up (merge, no question asked: nothing is
+//   lost), the fragment is removed from the address bar, and the trainer opens.
+// - Persistent storage is requested after the first analysis checkpoint and after an import.
 
 import { Coordinator, DEFAULT_PERFS, LAZY_TOP, defaultOptions } from './analysis/coordinator.js';
 import { chooseStart, cliOffer, loadCliDoc } from './core/startChoice.js';
+import { TransferError, decodeFragment, payloadOf } from './core/transfer.js';
+import { mountDataPanel } from './dataPanel.js';
 import { EnginePool, defaultWorkerCount } from './engine/pool.js';
-import { getPositions, getSetting, openDb, setSetting, userIdOf } from './store/db.js';
+import { applyImport, importMarkerName } from './store/backupStore.js';
+import { getPositions, getSetting, openDb, requestPersistence, setSetting, userIdOf } from './store/db.js';
 import { mountTrainer } from './trainer.js';
 
 const $ = (id) => document.getElementById(id);
@@ -27,7 +36,7 @@ const NAME_PATTERN = /^[A-Za-z0-9_-]{2,30}$/;
 /** App state, also read by the console and the headless checks (CDP). `events` is a timeline. */
 const app = (window.app = {
   view: 'loading', source: null, doc: null, cliDoc: null, trainer: null, coordinator: null,
-  busy: false, progress: null, events: [],
+  busy: false, progress: null, events: [], imported: null, transfer: null,
 });
 
 /** @type {IDBDatabase} */
@@ -36,6 +45,9 @@ let db;
 let pool = null;
 /** @type {Worker|null} */
 let fetchWorker = null;
+/** @type {ReturnType<typeof mountDataPanel>} */
+let dataPanel;
+let persistenceAsked = false;
 
 function note(type, extra = {}) {
   app.events.push({ type, at: Date.now(), ...extra });
@@ -80,15 +92,23 @@ function renderBar() {
   $('bar').hidden = !doc;
   if (!doc) return;
   const depth = doc.settings?.depth ? ` · depth ${doc.settings.depth}` : '';
-  const origin = app.source === 'cli' ? 'Command-line analysis' : 'Analysed in this browser';
+  const origin = app.source === 'cli' ? 'Command-line analysis' : importedLabel(app.imported) ?? 'Analysed in this browser';
   $('source-info').textContent = `${origin} · ${doc.games ?? '?'} games${depth} · ${when(doc.generated)}`;
 
   const offer = cliOffer(app.cliDoc);
-  $('update').hidden = app.busy || app.source !== 'browser';
+  $('update').hidden = app.busy || app.source !== 'browser' || !!app.imported;
   $('use-cli').hidden = app.busy || !offer || app.source === 'cli';
   if (offer) $('use-cli').textContent = `Use command-line analysis (${offer.user}, ${offer.positions} positions)`;
   $('to-start').hidden = app.busy;
   $('to-start').textContent = app.source === 'cli' ? 'Analyse in the browser' : 'Change user';
+}
+
+/** Where an imported document came from, or null (store/backupStore.js import marker). */
+function importedLabel(marker) {
+  if (!marker) return null;
+  if (marker.kind === 'positions') return 'Command-line analysis (loaded file)';
+  if (marker.kind === 'link') return marker.total > marker.positions ? `From a link (top ${marker.positions} of ${marker.total})` : 'From a link';
+  return 'From a backup';
 }
 
 function showError(text) {
@@ -135,9 +155,68 @@ function showDoc(doc, source) {
   renderBar();
 }
 
+/** The first checkpoint is the moment there is something worth keeping (design §3.3). */
+function askPersistence(from) {
+  if (persistenceAsked) return;
+  persistenceAsked = true;
+  requestPersistence().then((granted) => {
+    note('persist', { granted, from });
+    if (dataPanel?.isOpen) dataPanel.renderStorage();
+  });
+}
+
+/** After an import: show the stored document, mounted afresh so the trainer reads the imported stats. */
+function showImported(result, message) {
+  if (!result.doc) {
+    showProgress({ phase: message });
+    return;
+  }
+  app.imported = result.marker;
+  app.trainer?.destroy();
+  app.trainer = null;
+  $('name').value = result.user;
+  showDoc(result.doc, 'browser');
+  showProgress({ phase: message });
+  askPersistence('import');
+}
+
+/**
+ * A "Send to phone" link: `#import=…` in the address. Merged into what is stored, then the trainer.
+ * @returns {Promise<true|string|null>} true: imported and shown; a string: the error, when nothing is on
+ *   screen yet (start-up shows it); null: no link, or the error is already shown
+ */
+async function importFromLink() {
+  if (payloadOf(location.hash) === null) return null;
+  const hash = location.hash;
+  history.replaceState(null, '', location.pathname + location.search); // never import twice, never bookmark it
+  if (app.busy) {
+    showProgress({ phase: 'Stop the analysis first, then open the link again.' });
+    return null;
+  }
+  try {
+    const { doc, stats, total } = await decodeFragment(hash);
+    const result = await applyImport(db, localStorage, { kind: 'link', doc, stats, total }, 'merge');
+    note('link-import', { user: result.user, positions: result.doc?.positions.length ?? 0, total, stats: result.stats, keptExisting: result.keptExisting, chars: hash.length });
+    const part = doc.positions.length < total ? `the top ${doc.positions.length} of ${total} positions` : `${doc.positions.length} positions`;
+    showImported(result, result.keptExisting
+      ? `This device already had a newer analysis of ${result.user}; it stays. Stats from the link were merged.`
+      : `Imported ${part} of ${result.user} from the link, with stats for ${result.stats} positions.`);
+    return true;
+  } catch (err) {
+    console.error(err);
+    const text = err instanceof TransferError ? err.message : `The link could not be imported (${err?.message ?? err}).`;
+    note('link-error', { message: text });
+    if (app.view === 'loading') return text;
+    if (app.view === 'trainer') showProgress({ phase: text });
+    else showStart(text);
+    return null;
+  }
+}
+
 async function useCli() {
   if (!app.cliDoc || app.busy) return;
   await setSetting(db, 'lastSource', 'cli');
+  app.imported = null;
   showDoc(app.cliDoc, 'cli');
 }
 
@@ -275,6 +354,7 @@ async function run(user, options) {
     await setSetting(db, 'lastUser', name);
     await setSetting(db, 'lastSource', 'browser');
     await setSetting(db, OPTIONS_SETTING, options);
+    await setSetting(db, importMarkerName(name), null); // the analysis below replaces an imported document
     $('name').value = name;
 
     pool ??= new EnginePool({ size: defaultWorkerCount() });
@@ -282,7 +362,11 @@ async function run(user, options) {
       db, pool, user: name,
       options: { maxGames: options.maxGames, depth: options.depth, multipv: DEFAULTS.multipv, lazyTop: LAZY_TOP },
       onProgress: showAnalysisProgress,
-      onCheckpoint: (doc) => showDoc(doc, 'browser'),
+      onCheckpoint: (doc) => {
+        app.imported = null;
+        showDoc(doc, 'browser');
+        askPersistence('checkpoint');
+      },
     }));
     note('analysis-start', { user: name });
     const { state, doc, progress } = await co.run();
@@ -333,6 +417,10 @@ function wire() {
   $('update').addEventListener('click', async () => {
     if (app.doc?.user) run(app.doc.user, await loadOptions());
   });
+  const openData = () => dataPanel.open().then(() => $('data').scrollIntoView({ block: 'start' }));
+  $('open-data').addEventListener('click', openData);
+  $('open-data-start').addEventListener('click', openData);
+  window.addEventListener('hashchange', () => { importFromLink(); });
   $('pause').addEventListener('click', () => app.coordinator?.pause());
   $('resume').addEventListener('click', () => app.coordinator?.resume());
   $('stop').addEventListener('click', () => {
@@ -350,6 +438,15 @@ async function init() {
     $('loading').textContent = `This browser does not allow storing data for this page (${err?.message ?? err}).`;
     return;
   }
+  dataPanel = mountDataPanel({
+    db, storage: localStorage, note,
+    current: () => (app.trainer ? app.doc : null),
+    busy: () => app.busy,
+    onImported: (result) => {
+      dataPanel.close();
+      showImported(result, `Imported ${result.user}: ${result.doc?.positions.length ?? 0} positions, stats for ${result.stats} positions${result.games ? `, ${result.games} games` : ''}.`);
+    },
+  });
   wire();
   renderDefaults();
   const [lastUser, lastSource, options, cliDoc] = await Promise.all([
@@ -358,11 +455,20 @@ async function init() {
   app.cliDoc = cliDoc;
   $('name').value = lastUser ?? '';
   fillOptions(options);
+  const link = await importFromLink();
+  if (link === true) {
+    note('start', { view: 'trainer', source: 'link', lastUser: lastUser ?? null, cli: !!cliDoc });
+    return;
+  }
   const browserDoc = lastUser ? await getPositions(db, lastUser) : null;
+  app.imported = lastUser ? (await getSetting(db, importMarkerName(lastUser))) ?? null : null;
   const choice = chooseStart({ lastSource, browserDoc, cliDoc });
   note('start', { view: choice.view, source: choice.view === 'trainer' ? choice.source : null, lastUser: lastUser ?? null, cli: !!cliDoc });
-  if (choice.view === 'trainer') showDoc(choice.doc, choice.source);
-  else showStart();
+  const linkError = typeof link === 'string' ? link : '';
+  if (choice.view === 'trainer') {
+    showDoc(choice.doc, choice.source);
+    if (linkError) showProgress({ phase: linkError });
+  } else showStart(linkError);
 }
 
 init();

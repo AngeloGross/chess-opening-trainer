@@ -163,3 +163,49 @@ details summary { cursor: pointer; color: var(--accent); font-size: 0.9rem; }
 .progress-panel #progress-detail { margin-top: 4px; }
 .progress-panel .actions { margin: 8px 0 0; }
 progress { width: 100%; height: 10px; margin-top: 8px; accent-color: var(--accent); }
+
+
+/* ---------- Data panel: storage, backup, load a file, send to phone (slice 8) ---------- */
+
+h3 { font-size: 0.95rem; margin: 16px 0 6px; }
+.data-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.data-head h2 { margin: 0; }
+.storage-state { margin: 10px 0 2px; }
+.storage-state.good, .good-text { color: var(--accent); }
+.data-panel label.check { display: flex; align-items: baseline; gap: 6px; margin: 4px 0; }
+.data-panel p { margin: 4px 0; }
+
+button.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  font: inherit;
+}
+label.button {
+  display: inline-block;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+}
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.file-row { margin: 14px 0 0; }
+
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 10px 12px 12px;
+  text-align: center;
+}
+.drop-zone p { margin: 0 0 8px; }
+body.dragging .drop-zone { border-color: var(--accent); background: var(--selected); }
+.import-confirm { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 8px; }
+.import-confirm .actions { flex-wrap: wrap; }
+
+.qr { width: 100%; max-width: 560px; margin: 8px 0; }
+.qr svg { display: block; width: 100%; height: auto; } /* dataPanel.js fitQr() sets whole pixels per module */
+.link-row { display: flex; gap: 8px; margin-top: 6px; }
+.link-row input { flex: 1; font-size: 0.8rem; }

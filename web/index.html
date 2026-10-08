@@ -19,6 +19,7 @@
         <button id="update" type="button" hidden>Update</button>
         <button id="use-cli" type="button" hidden>Use command-line analysis</button>
         <button id="to-start" type="button" hidden>Change user</button>
+        <button id="open-data" type="button">Data</button>
       </span>
     </div>
   </header>
@@ -61,6 +62,66 @@
       </details>
       <p class="back-row"><button id="back" type="button" hidden>&larr; Back to training</button></p>
     </form>
+    <p class="file-row muted small">Analysed on another device or with the command line?
+      <button id="open-data-start" type="button" class="link">Load a backup or analysis file</button></p>
+  </section>
+
+  <section id="data" class="card data-panel" hidden aria-labelledby="data-title">
+    <div class="data-head">
+      <h2 id="data-title">Data</h2>
+      <button id="data-close" type="button">Close</button>
+    </div>
+    <p id="storage-state" class="storage-state"></p>
+    <p class="muted small"><span id="storage-usage"></span>
+      <button id="keep" type="button" class="link" hidden>Ask the browser to keep it permanently</button></p>
+
+    <p id="nothing" class="muted small" hidden>Nothing to back up or send yet: analyse your games or load a file first.</p>
+
+    <div id="export-section">
+      <h3>Backup</h3>
+      <p id="backup-user" class="muted small"></p>
+      <label class="check"><input type="radio" name="backup-kind" value="small" checked>
+        <span>Positions + stats only (small) <span id="size-small" class="muted"></span></span></label>
+      <label class="check"><input type="radio" name="backup-kind" value="full">
+        <span>Full backup incl. games and engine cache (larger) <span id="size-full" class="muted"></span></span></label>
+      <div class="actions"><button id="export" type="button" class="primary">Export backup</button></div>
+      <p id="export-done" class="small" role="status" hidden></p>
+    </div>
+
+    <h3>Load a file</h3>
+    <div id="drop-zone" class="drop-zone">
+      <p>Drop a backup or a <code>positions.json</code> from the command line here, or</p>
+      <label class="button" for="file-input">Choose a file…</label>
+      <input id="file-input" type="file" accept=".json,application/json" class="visually-hidden">
+    </div>
+    <div id="import-confirm" class="import-confirm" hidden>
+      <p id="import-summary"></p>
+      <p id="import-existing" class="muted small"></p>
+      <div class="actions">
+        <button id="import-merge" type="button" class="primary">Merge</button>
+        <button id="import-replace" type="button">Replace</button>
+        <button id="import-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+    <p id="import-error" class="error" role="alert" hidden></p>
+    <p id="import-done" class="small good-text" role="status" hidden></p>
+
+    <div id="send-section">
+      <h3>Send to phone</h3>
+      <p class="muted small">Analyse here, train on the phone: no server, no account. The analysis and your stats travel
+        inside the link itself.</p>
+      <div class="actions"><button id="send-phone" type="button">Create link and QR code</button></div>
+      <p id="send-error" class="error" role="alert" hidden></p>
+      <div id="send-result" hidden>
+        <div id="qr" class="qr"></div>
+        <p id="qr-note" class="small"></p>
+        <div id="link-row" class="link-row">
+          <input id="send-link" readonly aria-label="Link for the phone">
+          <button id="copy-link" type="button">Copy</button>
+        </div>
+        <p id="link-note" class="muted small"></p>
+      </div>
+    </div>
   </section>
 
   <section id="progress" class="card progress-panel" hidden>

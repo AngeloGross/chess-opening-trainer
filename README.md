@@ -26,6 +26,24 @@ the CLI exists, the start page offers it with one click ("Use analysis from the 
 Browser and CLI evals differ slightly (the browser uses Stockfish's small network), so borderline
 mistakes can differ between the two.
 
+### Backups and moving to your phone
+
+The **Data** button (or "Load a backup or analysis file" on the start page) shows whether the browser
+keeps the data permanently. Browsers may clear site data when space runs short, and Safari does so after
+7 days without a visit. From the same panel:
+
+- **Export backup** saves `opening-trainer-<user>-<date>.json`. *Positions + stats* is small (about
+  25-200 KB). *Full backup* adds the downloaded games and the engine cache, so **Update** can continue on
+  the other browser without analysing again.
+- **Load a file** (picker or drag-and-drop) reads a backup or the CLI's `positions.json`. If the browser
+  already has that player, you choose between *Merge*, which keeps the newer analysis and, per position,
+  the stats with more tries, and *Replace*.
+- **Send to phone** analyses on the computer for training on the phone, with no server involved. The
+  analysis and your stats are compressed into the link itself (`#import=…`). A QR code holds about 3 KB,
+  so it carries the top ~40 positions. The link carries everything (about 23 KB for 400 positions);
+  send it to yourself by e-mail or messenger and open it on the phone. Use the published site for this:
+  a link to `127.0.0.1` only works on the same computer.
+
 ## Getting started
 
 ### 1. Install the tools (once)

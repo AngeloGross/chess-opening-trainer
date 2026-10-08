@@ -54,6 +54,13 @@ def test_serve_sends_wasm_as_application_wasm():
     assert _Handler.extensions_map[".wasm"] == "application/wasm"
 
 
+def test_serve_sends_mjs_as_javascript():
+    # Module scripts with a non-JavaScript type are refused (the vendored QR code library is an .mjs file).
+    from opening_trainer.cli import _Handler
+
+    assert _Handler.extensions_map[".mjs"] == "text/javascript"
+
+
 def test_serve_defaults_to_this_computer_only():
     args = build_parser().parse_args(["serve"])
     assert args.host == "127.0.0.1"

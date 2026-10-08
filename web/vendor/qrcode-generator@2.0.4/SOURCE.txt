@@ -1,0 +1,16 @@
+qrcode-generator 2.0.4 (Kazuhiko Arase), vendored unchanged from the npm package (the ES module build).
+
+Package:    qrcode-generator@2.0.4 (npm, published 2025-08-07), sha512-mZSiP6RnbHl4xL2Ap5HfkjLnmxfKcPWpWe/c+5XxCuetEenqmNFf1FH/ftXPCtFG5/TDobjsjz6sSNL0Sr8Z9g==
+Obtained:   npm pack qrcode-generator@2.0.4, package/dist/qrcode.mjs copied; byte-identical to
+            https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.mjs
+License:    MIT. The npm package ships no LICENSE file (the license is stated in package.json and the file
+            header), so LICENSE in this folder is the repository's file at the release tag:
+            https://raw.githubusercontent.com/kazuhikoarase/qrcode-generator/js2.0.4/LICENSE
+Source:     https://github.com/kazuhikoarase/qrcode-generator/tree/js2.0.4
+
+Files (bytes, sha256):
+  dist/qrcode.mjs     51907  ea91d7118a5395289170da848b7c6758b996163bfbccf312591ab65a4911b7c0
+  LICENSE              1071  3a850fa5f08101db6f40676c2786e10bd2cd5fff7b12ffdf1e0c434d4e49d90c
+
+dist/qrcode.mjs is a self-contained ES module (exports `qrcode`, default `qrcode`); it touches no DOM at
+import time. web/core/transfer.js uses it for the "Send to phone" QR code (byte mode, error correction L).
