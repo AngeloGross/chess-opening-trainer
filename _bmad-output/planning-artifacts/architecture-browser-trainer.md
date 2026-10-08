@@ -51,6 +51,13 @@ All tests were run with curl on 2026-10-08 against `AngelOgro`.
 
 **Conclusion.** The 404 is not caused by a *missing* User-Agent. Lichess rejects **known tool UAs** such as `curl/…` and `python-requests/…`. A browser always sends its own UA, and that UA is accepted. The comment in `opening_trainer/__init__.py` ("without a User-Agent the game export returns 404") should be read as "with the default `requests` UA". The browser page does not need to set a UA, and it cannot.
 
+**Slice 1 result (2026-10-08, real browser engine).** `web/spike/lichess.html` with `web/lichess/client.js` was run in Microsoft Edge 141 (Chromium), driven headless over the DevTools protocol from `http://127.0.0.1:8765`:
+
+- `checkUser` returns the canonical name, and an unknown user gives a readable `not_found` (verified).
+- `streamGames` streams ndjson live through `fetch()` + `ReadableStream`: 4 → 44 → 50 games, 50 in 2.3 s (about 20 games/s, the documented anonymous rate). `AbortController` stops a 300-game stream cleanly mid-way (verified).
+- **New finding: Lichess returns 404 for the `HeadlessChrome` User-Agent** (curl with the same UA confirms: 404 with `HeadlessChrome/141`, 200 with `Chrome/141`). Real visitors are unaffected. **Any automated browser test (Playwright, CI) must override the UA** with a normal browser string, or point at a fake Lichess route.
+- **Still open:** Firefox and Safari/iOS (not installed here), and a public HTTPS origin. Run the spike page there once it is deployed.
+
 `Accept: application/x-ndjson` is a CORS-safelisted request header, so the export is a *simple* request with no preflight. The preflight answer is fine anyway.
 
 **Rate limits.** Lichess asks for "only one request at a time" and, after a 429, a wait of "a full minute" ([api-tips](https://lichess.org/page/api-tips)). The export is throttled to 20 games/s when anonymous ([OpenAPI spec](https://github.com/lichess-org/api/blob/master/doc/specs/tags/games/api-games-user-username.yaml)), so 500 games take about 25 s and 2,000 about 100 s. My own probing triggered one 429. **Unverified:** whether a 429 response carries ACAO. If it does not, `fetch()` rejects with an opaque `TypeError` and the status cannot be read. The design therefore treats a network-level failure of the export like a 429: keep what was stored, wait 60 s and retry once (§10).
@@ -270,7 +277,7 @@ Revisit this only if the UI grows into a component framework.
 
 | Risk | Status | Mitigation |
 |---|---|---|
-| Lichess rejects browser requests (UA or CORS) | curl with browser UAs: OK (verified); real-browser run: **unverified** | Story 1 is a throwaway page that streams 50 games from GitHub Pages in Chrome, Firefox and iOS Safari before anything else is built |
+| Lichess rejects browser requests (UA or CORS) | Chromium (Edge 141) real-page run: OK (verified, slice 1); Firefox/Safari: **unverified**; `HeadlessChrome` UA is blocked | Story 1 is a throwaway page that streams 50 games from GitHub Pages in Chrome, Firefox and iOS Safari before anything else is built |
 | 429 without CORS headers (unreadable status) | **unverified** | Strictly one request at a time; on 429 or opaque `TypeError`, keep stored games, show "Lichess asked us to slow down", auto-retry after 60 s, once |
 | Lichess ToS / API etiquette | Anonymous public export is the documented use; no scraping | Throttle to one request; never refetch stored games; `evals=false`; link back to Lichess for each game |
 | Browser speed lower than estimated | Desktop measured in Node; phones not measured | Depth 14 default; ETA shown before start; progressive training; worker count adapts to measured ms per search after the first 20 jobs |

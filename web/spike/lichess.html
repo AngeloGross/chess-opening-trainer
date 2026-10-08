@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lichess Spike</title>
+  <style>
+    :root { --bg: #fff; --fg: #1d1d1f; --muted: #6b6b70; --ok: #1a7f37; --err: #c62828; --line: #e3e3e6; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1b1b1d; --fg: #ececf0; --muted: #a0a0a8; --ok: #5bd17a; --err: #ff7a7a; --line: #333338; } }
+    body { margin: 0; padding: 16px; font: 15px/1.45 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+    main { max-width: 760px; margin: 0 auto; }
+    form { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    input, button { font: inherit; padding: 6px 10px; }
+    #status { color: var(--muted); }
+    #status.ok { color: var(--ok); } #status.err { color: var(--err); }
+    ol { padding-left: 1.6em; } li { border-bottom: 1px solid var(--line); padding: 3px 0; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Lichess spike</h1>
+  <p>Design slice 1: checks the user and streams games directly from lichess.org in this browser.</p>
+  <form id="form">
+    <input id="user" placeholder="Lichess name" required autocomplete="off">
+    <input id="max" type="number" min="1" max="300" value="50" style="width: 6em" aria-label="Number of games">
+    <button id="start">Load games</button>
+    <button id="stop" type="button" disabled>Stop</button>
+  </form>
+  <p id="status" role="status">Enter a name.</p>
+  <ol id="games"></ol>
+</main>
+<script type="module">
+import { checkUser, streamGames, LichessError } from '../lichess/client.js';
+
+const $ = (id) => document.getElementById(id);
+let controller = null;
+
+function status(text, cls = '') { const el = $('status'); el.textContent = text; el.className = cls; }
+
+$('form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  controller = new AbortController();
+  $('start').disabled = true; $('stop').disabled = false; $('games').replaceChildren();
+  const started = performance.now();
+  let n = 0;
+  try {
+    status('Checking user…');
+    const user = await checkUser($('user').value.trim(), { signal: controller.signal });
+    status(`User ${user} found. Streaming games…`);
+    const params = { perfType: 'blitz,rapid,classical', max: Number($('max').value) || 50 };
+    for await (const g of streamGames(user, params, { signal: controller.signal })) {
+      n++;
+      const li = document.createElement('li');
+      const date = new Date(g.createdAt).toISOString().slice(0, 10);
+      li.textContent = `${date} · ${g.perf} · ${g.players?.white?.user?.name ?? '?'} – ${g.players?.black?.user?.name ?? '?'} · ${g.opening?.eco ?? ''} ${g.opening?.name ?? ''}`;
+      $('games').append(li);
+      status(`Streaming… ${n} games`);
+    }
+    status(`Done: ${n} games in ${((performance.now() - started) / 1000).toFixed(1)} s.`, 'ok');
+  } catch (err) {
+    if (err.name === 'AbortError') status(`Stopped after ${n} games.`);
+    else status(err instanceof LichessError ? `${err.message} [${err.kind}]` : `Unexpected error: ${err.message}`, 'err');
+  } finally {
+    $('start').disabled = false; $('stop').disabled = true;
+  }
+});
+$('stop').addEventListener('click', () => controller?.abort());
+
+// ?user=Name&auto=1 starts immediately (used by the headless check).
+const qs = new URLSearchParams(location.search);
+if (qs.get('user')) $('user').value = qs.get('user');
+if (qs.get('max')) $('max').value = qs.get('max');
+if (qs.get('auto')) $('form').requestSubmit();
+</script>
+</body>
+</html>
