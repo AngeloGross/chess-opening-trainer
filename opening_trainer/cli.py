@@ -184,20 +184,25 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
 
 
 def _lan_addresses() -> list[str]:
-    """IPv4 addresses other devices on the network can use to reach this machine (best effort)."""
-    addrs: set[str] = set()
+    """IPv4 addresses other devices can use to reach this machine, the default-route one first (best effort).
+
+    Machines with WSL, Hyper-V or VPN adapters have several; the first is the likeliest for a phone.
+    """
+    primary = None
     try:
         # No packet is sent: connecting a UDP socket only picks the outgoing interface.
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.connect(("192.0.2.1", 9))
-            addrs.add(s.getsockname()[0])
+            primary = s.getsockname()[0]
     except OSError:
         pass
+    others: set[str] = set()
     try:
-        addrs.update(info[4][0] for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET))
+        others.update(info[4][0] for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET))
     except OSError:
         pass
-    return sorted(a for a in addrs if not a.startswith("127."))
+    ordered = ([primary] if primary else []) + sorted(others - {primary})
+    return [a for a in ordered if not a.startswith("127.")]
 
 
 def serve_urls(host: str, port: int, lan: list[str]) -> list[str]:
@@ -219,8 +224,8 @@ def cmd_serve(args: argparse.Namespace) -> None:
         print(f"Serving {WEB_DIR} at {urls[0]} (Ctrl+C to stop)")
         if len(urls) > 1 or urls[0] != f"http://127.0.0.1:{args.port}/":
             print("Reachable from other devices on your network (e.g. your phone) at:")
-            for url in urls[1:] if len(urls) > 1 else urls:
-                print(f"  {url}")
+            for i, url in enumerate(urls[1:] if len(urls) > 1 else urls):
+                print(f"  {url}" + ("   <- most likely" if i == 0 and len(urls) > 2 else ""))
             print("Anyone on this network can open these pages. On Windows, allow Python through the "
                   "firewall for private networks only. Plain HTTP: fine for testing, not for sharing.")
         if not args.no_browser:
