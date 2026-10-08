@@ -182,6 +182,11 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
 
     extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map, ".wasm": "application/wasm"}
 
+    def end_headers(self) -> None:
+        # Revalidate every file, so an updated page never runs with stale cached modules.
+        self.send_header("Cache-Control", "no-cache")
+        super().end_headers()
+
 
 def _lan_addresses() -> list[str]:
     """IPv4 addresses other devices can use to reach this machine, the default-route one first (best effort).
@@ -217,7 +222,8 @@ def serve_urls(host: str, port: int, lan: list[str]) -> list[str]:
 
 def cmd_serve(args: argparse.Namespace) -> None:
     if not POSITIONS_PATH.exists():
-        print("Note: web/positions.json is missing. Run `uv run trainer update` first.")
+        print("Note: no command-line analysis yet (web/positions.json). Enter your Lichess name on the page "
+              "to analyse in the browser, or run `uv run trainer update` first.")
     handler = functools.partial(_Handler, directory=str(WEB_DIR))
     with _Server((args.host, args.port), handler) as server:
         urls = serve_urls(args.host, args.port, _lan_addresses())

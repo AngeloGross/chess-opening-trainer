@@ -66,3 +66,24 @@ def test_serve_urls():
     assert serve_urls("0.0.0.0", 8000, ["192.168.1.23", "10.0.0.5"]) == [
         "http://127.0.0.1:8000/", "http://192.168.1.23:8000/", "http://10.0.0.5:8000/"]
     assert serve_urls("192.168.1.23", 9000, []) == ["http://192.168.1.23:9000/"]
+
+
+def test_serve_asks_browsers_to_revalidate(tmp_path):
+    import functools
+    import http.client
+    import threading
+
+    from opening_trainer.cli import _Handler, _Server
+
+    (tmp_path / "index.html").write_text("<p>hi</p>", encoding="utf-8")
+    handler = functools.partial(_Handler, directory=str(tmp_path))
+    with _Server(("127.0.0.1", 0), handler) as server:
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=5)
+            conn.request("GET", "/index.html")
+            resp = conn.getresponse()
+            assert resp.status == 200
+            assert resp.getheader("Cache-Control") == "no-cache"
+        finally:
+            server.shutdown()

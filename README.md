@@ -6,8 +6,25 @@ positions where you keep going wrong.
 
 A local Python CLI downloads your games, runs Stockfish over your first moves, records the first
 inaccuracy of each game, groups those by position and writes `web/positions.json`. A static page
-(chessground + chess.js from jsDelivr) quizzes you on them, ranked by errors × average loss.
+(chessground + chess.js, vendored in `web/vendor/`) quizzes you on them, ranked by errors × average loss.
 Everything runs on your own computer; no Lichess login is needed.
+
+## Use it in the browser
+
+The page can also do the whole job itself: download, Stockfish analysis (a WebAssembly build) and
+training all run in the browser, so nothing needs to be installed beyond serving the `web/` folder.
+
+```sh
+uv run trainer serve                   # or any static file server for web/, e.g. python -m http.server -d web
+```
+
+Enter a Lichess name and press **Start**. The positions appear while the analysis is still running
+(defaults: depth 14 and the 500 most recent games on a computer, depth 12 and 150 games on a phone;
+change them under *Settings*). Everything is stored in the browser: the next visit shows the
+positions at once, and **Update** fetches and analyses only new games. If `web/positions.json` from
+the CLI exists, the start page offers it with one click ("Use analysis from the command line").
+Browser and CLI evals differ slightly (the browser uses Stockfish's small network), so borderline
+mistakes can differ between the two.
 
 ## Getting started
 
@@ -50,6 +67,8 @@ stopped, because downloaded games and engine results are kept. Re-runs only anal
 ```sh
 uv run trainer serve                   # opens http://127.0.0.1:8000/ in your browser
 ```
+
+On the first visit, click "Use analysis from the command line"; the browser remembers the choice.
 
 Play the move you think is best. A move counts as correct if it is within the mistake threshold
 (20 cp) of the engine's best move. "Reveal" shows the answer and the move you usually played;
@@ -166,7 +185,8 @@ port pass again (`--check` only reports stale fixtures).
 ## License
 
 GPL-3.0-or-later, see [LICENSE](LICENSE). The project builds on python-chess (GPL-3.0) and
-Stockfish (GPL-3.0); chessground and chess.js are loaded from jsDelivr under their own licenses.
+Stockfish (GPL-3.0). chessground 9.2.1 (GPL-3.0-or-later) and chess.js 1.4.0 (BSD-2-Clause) are
+vendored unchanged in `web/vendor/` with their licenses, so the page loads nothing from third-party CDNs.
 
 The browser port vendors the Stockfish.js 19 "lite single-threaded" WASM build (npm
 `stockfish@19.0.0`, GPL-3.0) unchanged in `web/vendor/stockfish@19.0.0/`, with its license

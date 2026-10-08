@@ -1,0 +1,16 @@
+chessground 9.2.1, vendored unchanged from the npm package (the files the trainer page uses).
+
+Package:    chessground@9.2.1 (npm), sha512-KIdxm0zD69e62XRwdnFB0XUNYSzn5HM3pMazRCwpfruRUowFI8y+1OAK5YSyBff29myeV1/4o5Q8T191+Irbog==
+Obtained:   npm pack chessground@9.2.1; byte-identical to https://cdn.jsdelivr.net/npm/chessground@9.2.1/<file>
+License:    GPL-3.0-or-later (LICENSE in this folder)
+Source:     https://github.com/lichess-org/chessground/tree/v9.2.1
+
+Files (bytes, sha256):
+  dist/chessground.min.js              30016  915457e1a6b84abd9778d3ea5317a9fccaf59f4caa78196efbd92f586c0f0e9b
+  assets/chessground.base.css           3342  77cbfd65f9b3f64f310a0b8eab0e34ef9f364172e4f678fc05c114b385a341a6
+  assets/chessground.brown.css          2839  80de613fe928a947e88b983835286f21c723738d9319b1f8868442bb56fb1577
+  assets/chessground.cburnett.css      11548  f9216192b5383a83e62a81de1cf58520f7c251f6f24930f5710a3c797f78ced4
+  LICENSE                              35147  8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903
+
+dist/chessground.min.js is the self-contained ES module build (exports Chessground); the CSS files
+embed the board and piece images as data: URIs, so nothing else is fetched.
