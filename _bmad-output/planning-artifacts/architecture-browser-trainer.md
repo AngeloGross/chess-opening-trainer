@@ -12,7 +12,7 @@ related:
 
 ## 1. Goal and non-goals
 
-**Goal.** A fully static website on GitHub Pages that a non-technical friend opens, types a Lichess name into, and gets the same training set that `uv run trainer update` produces today. Downloading, Stockfish analysis and the quiz all run in the visitor's browser. There is no backend and no hosting cost.
+**Goal.** A fully static website (GitHub Pages by default; any static host works, see §13) that a non-technical friend opens, types a Lichess name into, and gets the same training set that `uv run trainer update` produces today. Downloading, Stockfish analysis and the quiz all run in the visitor's browser. There is no backend and no hosting cost.
 
 **Non-goals for v1:**
 
@@ -301,7 +301,65 @@ Each slice ends in something demoable on the deployed Pages URL.
 
 7. *UX polish.* Settings panel with ETA, error messages for every row of §11, mobile layout, Wake Lock, adaptive worker count. **Demo:** a full run on an iPhone.
 8. *Persistence safety.* `storage.persist()`, export/import backup, "Load CLI analysis file", per-user stats key. **Demo:** move training data between two browsers.
-9. *Release.* GitHub Actions Pages deploy, license and source footer, README section "Use it in the browser". **Demo:** public URL shared with friends.
+9. *Release.* Deploy to the chosen static host (GitHub Pages workflow, or Cloudflare Pages + Access while the repo is private; see §13), license and source footer, README section "Use it in the browser". **Demo:** URL shared with friends.
+
+## 13. Hosting alternatives
+
+GitHub Pages is the default only because the repo already lives on GitHub. **The architecture does not depend on it.** The app is a folder of static files (HTML, ES modules, about 1.8 MB of vendored engine, CSS). All work happens in the visitor's browser, and Lichess answers with `Access-Control-Allow-Origin: *`, so the site's origin doesn't matter (§3.1). Any host that serves static files can run it.
+
+### 13.1 What a host must provide
+
+| Requirement | Why | Notes |
+|---|---|---|
+| **HTTPS** | Web Workers, IndexedDB persistence (`storage.persist()`) and Wake Lock need a secure context | Every host below provides it; `http://127.0.0.1` also counts as secure for local use |
+| Serve `.wasm` as `application/wasm` | `WebAssembly.instantiateStreaming` needs the right MIME type | The engine loader falls back to `arrayBuffer()` + `instantiate`, so a wrong type costs speed, not function |
+| Files up to about 2 MB | Vendored `stockfish-19-lite-single.wasm` | Far below every host's per-file limit |
+| No server-side code | Nothing to run | Static hosting tiers are enough |
+
+**Nice to have:**
+- **Custom response headers.** This is the one thing GitHub Pages lacks. They allow long cache lifetimes for the vendored engine and `COOP: same-origin` + `COEP: require-corp` if multithreaded search is ever wanted (§3.2). Where headers can be set, coi-serviceworker is unnecessary.
+- **Access control.** It keeps the site to invited friends while the repo stays private.
+
+### 13.2 What changes when the host changes
+
+Only the deployment layer changes; **application code stays identical.**
+
+- **Deploy step:** replace the Pages workflow (§9) with the host's Git integration or CLI upload of `web/` (minus `positions.json`).
+- **Optional headers file in `web/`:** `_headers` on Cloudflare Pages and Netlify, `vercel.json` on Vercel, `staticwebapp.config.json` on Azure, a server block on nginx/Caddy. Example for Cloudflare/Netlify:
+  ```
+  /vendor/*
+    Cache-Control: public, max-age=31536000, immutable
+  # only if multithreading is enabled later:
+  /*
+    Cross-Origin-Opener-Policy: same-origin
+    Cross-Origin-Embedder-Policy: require-corp
+  ```
+- **Footer links:** point the source link at wherever the code is shared. The GPL source offer still applies, even with a private repo, once the built site is given to others (a tarball link or repo invitation covers it).
+- **Story 1** (Lichess spike) runs on the chosen host instead of `*.github.io`. Because CORS is `*`, the result carries over to any origin.
+
+### 13.3 Options compared
+
+| Host | Private repo OK | Custom headers | Restrict to friends | Cost | Fit |
+|---|---|---|---|---|---|
+| **GitHub Pages** | Only on paid plans (Pro/Team/Enterprise); free accounts need a public repo | No | Only on Enterprise Cloud; on Pro the site is public to anyone with the link | Free (public repo) / GitHub Pro | Default when the repo goes public |
+| **Cloudflare Pages** | Yes (Git integration or direct upload) | Yes, `_headers` (max 100 rules) | Yes, Cloudflare Access (Zero Trust free for up to 50 users; login by email code, Google, GitHub, …) | Free | **Recommended while the repo is private** |
+| **Netlify** | Yes | Yes, `_headers` / `netlify.toml` | Dashboard password on Pro; free tier: Basic-Auth via `_headers` (password stored in the repo) | Free / Pro | Good alternative |
+| **Vercel** | Yes | Yes, `vercel.json` | Password protection is a paid feature (*unverified in this pass*) | Free Hobby tier is for non-commercial use | Works; fewer reasons to prefer it here |
+| **Azure Static Web Apps** | Yes | Yes, `staticwebapp.config.json` | Built-in auth and role rules (*unverified in this pass*) | Free tier | Fine if Azure is already in use |
+| **Own server** (small VPS or a home Raspberry Pi with nginx/Caddy, optionally behind a Cloudflare Tunnel) | n/a | Full control | Basic Auth, or Cloudflare Access via the Tunnel | VPS a few EUR per month; Pi hardware only | Most control, most upkeep (OS updates, TLS) |
+
+Plan details change; check the current pricing pages before committing to one. Free tiers of all hosts above are far beyond this app's traffic: a few friends, about 2 MB per first visit, cached afterwards.
+
+### 13.4 Recommendation
+
+- **While the repo is private and the audience is a few friends: Cloudflare Pages + Cloudflare Access.**
+  - The repo stays private, hosting is free and custom headers are available.
+  - Access limits the site to the friends' e-mail addresses without any code in the app.
+  - Moving to GitHub Pages later is just the deploy step.
+- **When the repo goes public:** GitHub Pages stays the simplest option (one workflow, no extra account). Cloudflare Pages remains equally valid.
+- **Avoid paying GitHub only for Pages.** On Pro the site would still be public to anyone with the link, so it buys no privacy.
+
+Slice 9 (*Release*, §12) therefore becomes "deploy to the chosen static host". Its acceptance criteria are host-neutral: HTTPS URL, engine loads, Lichess spike passes, footer with source and license.
 
 ## Sources
 
@@ -315,3 +373,7 @@ Each slice ends in something demoable on the deployed Pages URL.
 - Storage quotas and eviction: <https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria>
 - Speed: own benchmark, 2026-10-08 (§3.2); anecdotal context: <https://lichess.org/blog/YDOKRxQAACgAREB3/stockfish-13-nnue-on-lichess>
 - License metadata: chessground (GPL-3.0-or-later) and chess.js (BSD-2-Clause) from the npm registry
+- GitHub Pages and private repositories (paid plans; site visibility): <https://github.com/orgs/community/discussions/22817>, <https://github.com/orgs/community/discussions/44593>
+- Cloudflare Pages limits and headers: <https://developers.cloudflare.com/pages/platform/limits>, <https://developers.cloudflare.com/pages/configuration/headers/>
+- Cloudflare Access / Zero Trust free tier (up to 50 users): <https://www.cloudflare.com/en-gb/sase/products/access/>
+- Netlify headers and password protection: <https://docs.netlify.com/manage/routing/headers/>, <https://www.netlify.com/blog/restricting-access-to-netlify-sites-with-passwords>, <https://netlify.com/pricing/>
