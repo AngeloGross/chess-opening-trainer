@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fetch Spike</title>
+  <style>
+    :root { --bg: #fff; --fg: #1d1d1f; --muted: #6b6b70; --ok: #1a7f37; --err: #c62828; --line: #e3e3e6; --code: #f4f4f6; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1b1b1d; --fg: #ececf0; --muted: #a0a0a8; --ok: #5bd17a; --err: #ff7a7a; --line: #333338; --code: #26262a; } }
+    body { margin: 0; padding: 16px; font: 15px/1.45 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+    main { max-width: 760px; margin: 0 auto; }
+    form { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; align-items: center; }
+    input, button { font: inherit; padding: 6px 10px; }
+    #status { color: var(--muted); }
+    #status.ok { color: var(--ok); } #status.err { color: var(--err); }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 12px 0; }
+    dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
+    pre { background: var(--code); padding: 8px; overflow-x: auto; font-size: 13px; margin: 0; white-space: pre-wrap; }
+    ol, ul { padding-left: 1.6em; } li { border-bottom: 1px solid var(--line); padding: 3px 0; overflow-wrap: anywhere; }
+    #log li { border: 0; padding: 0; color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Fetch spike</h1>
+  <p>Design slice 4: incremental download into IndexedDB in a worker. Reload mid-download, then Start again: it continues.</p>
+  <form id="form">
+    <input id="user" placeholder="Lichess name" required autocomplete="off">
+    <label>Max games <input id="max" type="number" min="1" max="5000" value="150" style="width: 6em"></label>
+    <input id="perfs" value="blitz,rapid,classical" aria-label="Perf types" style="width: 14em">
+    <button id="start">Start</button>
+    <button id="stop" type="button" disabled>Stop</button>
+    <button id="clear" type="button">Clear this user's data</button>
+  </form>
+  <p id="status" role="status">Enter a name.</p>
+  <dl>
+    <dt>Stored</dt><dd id="count">–</dd>
+    <dt>Oldest / newest</dt><dd id="range">–</dd>
+    <dt>Fetch state</dt><dd><pre id="state">–</pre></dd>
+  </dl>
+  <h2>Last 10 stored games</h2>
+  <ol id="games"></ol>
+  <h2>Log</h2>
+  <ul id="log"></ul>
+</main>
+<script type="module">
+import { clearUser, gameSummary, getFetchState, latestGames, openDb, setSetting, getSetting } from '../store/db.js';
+
+const $ = (id) => document.getElementById(id);
+const db = await openDb();
+/** @type {Worker|null} */
+let worker = null;
+let started = 0;
+
+const day = (ts) => (ts == null ? '–' : new Date(ts).toISOString().replace('T', ' ').slice(0, 16));
+function status(text, cls = '') { const el = $('status'); el.textContent = text; el.className = cls; }
+function log(text) {
+  const li = document.createElement('li');
+  li.textContent = `${new Date().toLocaleTimeString()}  ${text}`;
+  $('log').prepend(li);
+}
+const perfs = () => $('perfs').value.split(',').map((p) => p.trim()).filter(Boolean);
+const elapsed = () => `${((performance.now() - started) / 1000).toFixed(1)} s`;
+const counts = (m) => `stored ${m.stored} (all perfs ${m.total}), added ${m.added}, seen ${m.seen}, requests ${m.requests}`;
+
+/** Re-read this user's data from IndexedDB. */
+async function refresh() {
+  const user = $('user').value.trim();
+  if (!user) return;
+  const [sum, state, last] = await Promise.all([gameSummary(db, user), getFetchState(db, user), latestGames(db, user, 10)]);
+  $('count').textContent = String(sum.count);
+  $('range').textContent = `${day(sum.oldest)} / ${day(sum.newest)}`;
+  $('state').textContent = state
+    ? JSON.stringify({ ...state, oldestSeen: `${state.oldestSeen} (${day(state.oldestSeen)})`, newestSeen: `${state.newestSeen} (${day(state.newestSeen)})` }, null, 1)
+    : 'none';
+  $('games').replaceChildren(...last.map((g) => {
+    const li = document.createElement('li');
+    li.textContent = `${day(g.createdAt)} · ${g.id} · ${g.perf} · ${g.players?.white?.user?.name ?? '?'} – ${g.players?.black?.user?.name ?? '?'} · ${g.opening?.eco ?? ''} ${g.opening?.name ?? ''}`;
+    return li;
+  }));
+}
+
+function finish() {
+  worker?.terminate();
+  worker = null;
+  $('start').disabled = false; $('stop').disabled = true; $('clear').disabled = false;
+}
+
+function onMessage({ data: m }) {
+  switch (m.type) {
+    case 'user': status(`User ${m.name} found. Downloading…`); log(`user ${m.name}`); break;
+    case 'note': log(m.message); break;
+    case 'progress': status(`Downloading… ${counts(m)} · ${elapsed()}`); refresh(); break;
+    case 'retry': status(`${m.message} Retrying once in ${m.delayMs / 1000} s (Stop cancels).`, 'err'); log(`retry after ${m.kind}: ${counts(m)}`); break;
+    case 'done': status(`Done: ${counts(m)} · ${elapsed()}`, 'ok'); log(`done: ${counts(m)} · ${elapsed()}`); finish(); refresh(); break;
+    case 'stopped': status(`Stopped: ${counts(m)} · ${elapsed()}`); log(`stopped: ${counts(m)} · ${elapsed()}`); finish(); refresh(); break;
+    case 'error': status(`${m.message} [${m.kind}] · ${counts(m)}`, 'err'); log(`error ${m.kind}: ${m.message}`); finish(); refresh(); break;
+  }
+}
+
+$('form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const user = $('user').value.trim();
+  await setSetting(db, 'lastUser', user);
+  worker = new Worker(new URL('../lichess/fetch.worker.js', import.meta.url), { type: 'module' });
+  worker.onmessage = onMessage;
+  worker.onerror = (e) => { status(`Worker failed: ${e.message}`, 'err'); finish(); };
+  $('start').disabled = true; $('stop').disabled = false; $('clear').disabled = true;
+  started = performance.now();
+  status('Checking user…');
+  const max = Number($('max').value);
+  worker.postMessage({ type: 'start', user, perfs: perfs(), maxGames: max > 0 ? max : null, since: null });
+});
+$('stop').addEventListener('click', () => worker?.postMessage({ type: 'stop' }));
+$('clear').addEventListener('click', async () => {
+  const user = $('user').value.trim();
+  if (!user) return;
+  await clearUser(db, user);
+  log(`cleared ${user}`);
+  status(`Cleared the data of ${user}.`);
+  refresh();
+});
+$('user').addEventListener('change', refresh);
+
+// ?user=Name&max=150&perfs=blitz&auto=1 (used by the headless check). Otherwise the last name is restored.
+const qs = new URLSearchParams(location.search);
+$('user').value = qs.get('user') ?? (await getSetting(db, 'lastUser')) ?? '';
+if (qs.get('max')) $('max').value = qs.get('max');
+if (qs.get('perfs')) $('perfs').value = qs.get('perfs');
+await refresh();
+if (qs.get('auto') && $('user').value) $('form').requestSubmit();
+</script>
+</body>
+</html>
