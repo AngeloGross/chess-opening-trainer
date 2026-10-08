@@ -1,0 +1,211 @@
+{
+ "name": "corrupt-moves",
+ "scenarios": [
+  "an unparsable SAN stops the scan, keeping what was scanned",
+  "an illegal SAN stops the scan the same way",
+  "a real Lichess move string with check suffixes and castling parses fully"
+ ],
+ "user": "AngelOgro",
+ "settings": {
+  "max_moves": 15,
+  "threshold": 20
+ },
+ "games": [
+  {
+   "id": "corrup01",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791444124876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 e5 Nf3 Zz9 Bc4",
+   "opening": {
+    "eco": "B00",
+    "name": "King's Pawn Game",
+    "ply": 2
+   }
+  },
+  {
+   "id": "corrup02",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791443524876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 e5 Ke3 Nc6",
+   "opening": {
+    "eco": "B00",
+    "name": "King's Pawn Game",
+    "ply": 2
+   }
+  },
+  {
+   "id": "corrup03",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791442924876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "d4 Nf6 c4 e6 Nc3 Bb4 Qc2 O-O a3 Bxc3+ Qxc3 b6 Bg5 Bb7 f3 h6 Bh4 d5 e3 Nbd7 cxd5 Nxd5",
+   "opening": {
+    "eco": "E38",
+    "name": "Nimzo-Indian Defense: Classical Variation",
+    "ply": 2
+   }
+  }
+ ],
+ "fakeEngine": {
+  "rnbq1rk1/pppp1ppp/4pn2/8/2PP4/P1b5/1PQ1PPPP/R1B1KBNR w KQ -": [
+   "b2c3",
+   25
+  ],
+  "rnbq1rk1/pppp1ppp/4pn2/8/2PP4/P1Q5/1P2PPPP/R1B1KBNR b KQ -": [
+   "c7c5",
+   0
+  ]
+ },
+ "topMoves": {},
+ "expected": {
+  "results": [
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -"
+    ],
+    "mistake": null,
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -"
+    ]
+   },
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -"
+    ],
+    "mistake": null,
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -"
+    ]
+   },
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkb1r/pppppppp/5n2/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -",
+     "rnbqkb1r/pppp1ppp/4pn2/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq -",
+     "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq -",
+     "rnbq1rk1/pppp1ppp/4pn2/8/1bPP4/2N5/PPQ1PPPP/R1B1KBNR w KQ -",
+     "rnbq1rk1/pppp1ppp/4pn2/8/2PP4/P1b5/1PQ1PPPP/R1B1KBNR w KQ -"
+    ],
+    "mistake": {
+     "fen": "rnbq1rk1/pppp1ppp/4pn2/8/2PP4/P1b5/1PQ1PPPP/R1B1KBNR w KQ - 0 6",
+     "key": "rnbq1rk1/pppp1ppp/4pn2/8/2PP4/P1b5/1PQ1PPPP/R1B1KBNR w KQ -",
+     "ply": 10,
+     "played": "c2c3",
+     "played_san": "Qxc3",
+     "best": "b2c3",
+     "best_san": "bxc3",
+     "loss": 25,
+     "eval_best": 25
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkb1r/pppppppp/5n2/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -",
+     "rnbqkb1r/pppp1ppp/4pn2/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq -",
+     "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq -",
+     "rnbq1rk1/pppp1ppp/4pn2/8/1bPP4/2N5/PPQ1PPPP/R1B1KBNR w KQ -",
+     "rnbq1rk1/pppp1ppp/4pn2/8/2PP4/P1b5/1PQ1PPPP/R1B1KBNR w KQ -",
+     "rnbq1rk1/pppp1ppp/4pn2/8/2PP4/P1Q5/1P2PPPP/R1B1KBNR b KQ -"
+    ]
+   }
+  ],
+  "positions": [
+   {
+    "key": "rnbq1rk1/pppp1ppp/4pn2/8/2PP4/P1b5/1PQ1PPPP/R1B1KBNR w KQ -",
+    "fen": "rnbq1rk1/pppp1ppp/4pn2/8/2PP4/P1b5/1PQ1PPPP/R1B1KBNR w KQ - 0 6",
+    "orientation": "white",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 25.0,
+    "raw_avg_loss": 25.0,
+    "score": 25.0,
+    "best": "b2c3",
+    "best_san": "bxc3",
+    "acceptable": [
+     "b2c3"
+    ],
+    "played": [
+     {
+      "uci": "c2c3",
+      "san": "Qxc3",
+      "count": 1
+     }
+    ],
+    "eco": "E38",
+    "opening": "Nimzo-Indian Defense: Classical Variation",
+    "games": [
+     "https://lichess.org/corrup03#10"
+    ]
+   }
+  ],
+  "progress": [
+   [
+    1,
+    1
+   ]
+  ]
+ }
+}

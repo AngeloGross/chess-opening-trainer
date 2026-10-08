@@ -1,0 +1,263 @@
+{
+ "name": "colour-and-urls",
+ "scenarios": [
+  "user matched case-insensitively by id or by name only; AI opponent has no user",
+  "white URL without suffix and with #0 for a first-move mistake",
+  "black URL with /black#1",
+  "a game he did not play and a game without moves give no result"
+ ],
+ "user": "ANGELOGRO",
+ "settings": {
+  "max_moves": 15,
+  "threshold": 20
+ },
+ "games": [
+  {
+   "id": "colour01",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791444124876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 e5 Nf3",
+   "opening": {
+    "eco": "C20",
+    "name": "King's Pawn Game",
+    "ply": 2
+   }
+  },
+  {
+   "id": "colour02",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791443524876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "aiLevel": 3
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro"
+     }
+    }
+   },
+   "moves": "e4 a6 d4",
+   "opening": {
+    "eco": "B00",
+    "name": "St. George Defense",
+    "ply": 2
+   }
+  },
+  {
+   "id": "colour03",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791442924876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "someone",
+      "id": "someone"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "else",
+      "id": "else"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 e5 Nf3",
+   "opening": {
+    "eco": "B00",
+    "name": "King's Pawn Game",
+    "ply": 2
+   }
+  },
+  {
+   "id": "colour04",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791442324876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "",
+   "opening": {
+    "eco": "B00",
+    "name": "King's Pawn Game",
+    "ply": 2
+   }
+  }
+ ],
+ "fakeEngine": {
+  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -": [
+   "d2d4",
+   30
+  ],
+  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -": [
+   "e7e5",
+   20
+  ],
+  "rnbqkbnr/1ppppppp/p7/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -": [
+   "d2d4",
+   30
+  ]
+ },
+ "topMoves": {},
+ "expected": {
+  "results": [
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+     "key": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "ply": 0,
+     "played": "e2e4",
+     "played_san": "e4",
+     "best": "d2d4",
+     "best_san": "d4",
+     "loss": 50,
+     "eval_best": 30
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -"
+    ]
+   },
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+     "key": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "ply": 1,
+     "played": "a7a6",
+     "played_san": "a6",
+     "best": "e7e5",
+     "best_san": "e5",
+     "loss": 50,
+     "eval_best": 20
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/1ppppppp/p7/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -"
+    ]
+   },
+   null,
+   null
+  ],
+  "positions": [
+   {
+    "key": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+    "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+    "orientation": "black",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 50.0,
+    "raw_avg_loss": 50.0,
+    "score": 50.0,
+    "best": "e7e5",
+    "best_san": "e5",
+    "acceptable": [
+     "e7e5"
+    ],
+    "played": [
+     {
+      "uci": "a7a6",
+      "san": "a6",
+      "count": 1
+     }
+    ],
+    "eco": "B00",
+    "opening": "St. George Defense",
+    "games": [
+     "https://lichess.org/colour02/black#1"
+    ]
+   },
+   {
+    "key": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+    "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "orientation": "white",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 50.0,
+    "raw_avg_loss": 50.0,
+    "score": 50.0,
+    "best": "d2d4",
+    "best_san": "d4",
+    "acceptable": [
+     "d2d4"
+    ],
+    "played": [
+     {
+      "uci": "e2e4",
+      "san": "e4",
+      "count": 1
+     }
+    ],
+    "eco": "C20",
+    "opening": "King's Pawn Game",
+    "games": [
+     "https://lichess.org/colour01#0"
+    ]
+   }
+  ],
+  "progress": [
+   [
+    1,
+    2
+   ],
+   [
+    2,
+    2
+   ]
+  ]
+ }
+}

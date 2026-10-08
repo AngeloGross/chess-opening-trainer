@@ -1,0 +1,13 @@
+{
+  "name": "opening-trainer-web",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only tooling for the browser trainer in web/ (tests). The site itself has no build step.",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "5.0.1"
+  }
+}

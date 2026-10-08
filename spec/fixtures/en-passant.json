@@ -1,0 +1,408 @@
+{
+ "name": "en-passant",
+ "scenarios": [
+  "ep capture legal after a double push: FEN key carries the ep square (d6 / e3)",
+  "ep capture pseudo-legal but pinned (Kc3, Bg7 on the diagonal): key has '-'",
+  "double push without an adjacent enemy pawn: key has '-'"
+ ],
+ "user": "AngelOgro",
+ "settings": {
+  "max_moves": 15,
+  "threshold": 20
+ },
+ "games": [
+  {
+   "id": "enpass01",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791444124876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 Nf6 e5 d5 exd6",
+   "opening": {
+    "eco": "B02",
+    "name": "Alekhine Defense",
+    "ply": 2
+   }
+  },
+  {
+   "id": "enpass02",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791443524876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 g6 e5 Bg7 Ke2 Nc6 Kd3 Nb8 Kc3 d5 Kd3",
+   "opening": {
+    "eco": "B06",
+    "name": "Modern Defense",
+    "ply": 2
+   }
+  },
+  {
+   "id": "enpass03",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791442924876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "Nf3 d5 Nc3 d4 e4 dxe3",
+   "opening": {
+    "eco": "A06",
+    "name": "Zukertort Opening",
+    "ply": 2
+   }
+  },
+  {
+   "id": "enpass04",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791442324876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 e6 d4",
+   "opening": {
+    "eco": "C00",
+    "name": "French Defense",
+    "ply": 2
+   }
+  }
+ ],
+ "fakeEngine": {
+  "rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6": [
+   "d2d4",
+   20
+  ],
+  "rnbqkb1r/ppp1pppp/3P1n2/8/8/8/PPPP1PPP/RNBQKBNR b KQkq -": [
+   "c7d6",
+   10
+  ],
+  "rnbqk1nr/ppp1ppbp/6p1/3pP3/8/2K5/PPPP1PPP/RNBQ1BNR w kq -": [
+   "c3b3",
+   0
+  ],
+  "rnbqk1nr/ppp1ppbp/6p1/3pP3/8/3K4/PPPP1PPP/RNBQ1BNR b kq -": [
+   "g8f6",
+   25
+  ],
+  "rnbqkbnr/ppp1pppp/8/8/3pP3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq e3": [
+   "c7c5",
+   10
+  ],
+  "rnbqkbnr/ppp1pppp/8/8/8/2N1pN2/PPPP1PPP/R1BQKB1R w KQkq -": [
+   "d2e3",
+   30
+  ],
+  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -": [
+   "e7e5",
+   20
+  ],
+  "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -": [
+   "d2d4",
+   30
+  ]
+ },
+ "topMoves": {},
+ "expected": {
+  "results": [
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6"
+    ],
+    "mistake": {
+     "fen": "rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3",
+     "key": "rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6",
+     "ply": 4,
+     "played": "e5d6",
+     "played_san": "exd6",
+     "best": "d2d4",
+     "best_san": "d4",
+     "loss": 30,
+     "eval_best": 20
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6",
+     "rnbqkb1r/ppp1pppp/3P1n2/8/8/8/PPPP1PPP/RNBQKBNR b KQkq -"
+    ]
+   },
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppppp1p/6p1/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "rnbqk1nr/ppppppbp/6p1/4P3/8/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "r1bqk1nr/ppppppbp/2n3p1/4P3/8/8/PPPPKPPP/RNBQ1BNR w kq -",
+     "rnbqk1nr/ppppppbp/6p1/4P3/8/3K4/PPPP1PPP/RNBQ1BNR w kq -",
+     "rnbqk1nr/ppp1ppbp/6p1/3pP3/8/2K5/PPPP1PPP/RNBQ1BNR w kq -"
+    ],
+    "mistake": {
+     "fen": "rnbqk1nr/ppp1ppbp/6p1/3pP3/8/2K5/PPPP1PPP/RNBQ1BNR w kq - 0 6",
+     "key": "rnbqk1nr/ppp1ppbp/6p1/3pP3/8/2K5/PPPP1PPP/RNBQ1BNR w kq -",
+     "ply": 10,
+     "played": "c3d3",
+     "played_san": "Kd3",
+     "best": "c3b3",
+     "best_san": "Kb3",
+     "loss": 25,
+     "eval_best": 0
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppppp1p/6p1/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "rnbqk1nr/ppppppbp/6p1/4P3/8/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "r1bqk1nr/ppppppbp/2n3p1/4P3/8/8/PPPPKPPP/RNBQ1BNR w kq -",
+     "rnbqk1nr/ppppppbp/6p1/4P3/8/3K4/PPPP1PPP/RNBQ1BNR w kq -",
+     "rnbqk1nr/ppp1ppbp/6p1/3pP3/8/2K5/PPPP1PPP/RNBQ1BNR w kq -",
+     "rnbqk1nr/ppp1ppbp/6p1/3pP3/8/3K4/PPPP1PPP/RNBQ1BNR b kq -"
+    ]
+   },
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq -",
+     "rnbqkbnr/ppp1pppp/8/3p4/8/2N2N2/PPPPPPPP/R1BQKB1R b KQkq -",
+     "rnbqkbnr/ppp1pppp/8/8/3pP3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq e3"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/ppp1pppp/8/8/3pP3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq e3 0 3",
+     "key": "rnbqkbnr/ppp1pppp/8/8/3pP3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq e3",
+     "ply": 5,
+     "played": "d4e3",
+     "played_san": "dxe3",
+     "best": "c7c5",
+     "best_san": "c5",
+     "loss": 40,
+     "eval_best": 10
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq -",
+     "rnbqkbnr/ppp1pppp/8/3p4/8/2N2N2/PPPPPPPP/R1BQKB1R b KQkq -",
+     "rnbqkbnr/ppp1pppp/8/8/3pP3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq e3",
+     "rnbqkbnr/ppp1pppp/8/8/8/2N1pN2/PPPP1PPP/R1BQKB1R w KQkq -"
+    ]
+   },
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+     "key": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "ply": 1,
+     "played": "e7e6",
+     "played_san": "e6",
+     "best": "e7e5",
+     "best_san": "e5",
+     "loss": 50,
+     "eval_best": 20
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -"
+    ]
+   }
+  ],
+  "positions": [
+   {
+    "key": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+    "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+    "orientation": "black",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 50.0,
+    "raw_avg_loss": 50.0,
+    "score": 50.0,
+    "best": "e7e5",
+    "best_san": "e5",
+    "acceptable": [
+     "e7e5"
+    ],
+    "played": [
+     {
+      "uci": "e7e6",
+      "san": "e6",
+      "count": 1
+     }
+    ],
+    "eco": "C00",
+    "opening": "French Defense",
+    "games": [
+     "https://lichess.org/enpass04/black#1"
+    ]
+   },
+   {
+    "key": "rnbqkbnr/ppp1pppp/8/8/3pP3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq e3",
+    "fen": "rnbqkbnr/ppp1pppp/8/8/3pP3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq e3 0 3",
+    "orientation": "black",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 40.0,
+    "raw_avg_loss": 40.0,
+    "score": 40.0,
+    "best": "c7c5",
+    "best_san": "c5",
+    "acceptable": [
+     "c7c5"
+    ],
+    "played": [
+     {
+      "uci": "d4e3",
+      "san": "dxe3",
+      "count": 1
+     }
+    ],
+    "eco": "A06",
+    "opening": "Zukertort Opening",
+    "games": [
+     "https://lichess.org/enpass03/black#5"
+    ]
+   },
+   {
+    "key": "rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6",
+    "fen": "rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3",
+    "orientation": "white",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 30.0,
+    "raw_avg_loss": 30.0,
+    "score": 30.0,
+    "best": "d2d4",
+    "best_san": "d4",
+    "acceptable": [
+     "d2d4"
+    ],
+    "played": [
+     {
+      "uci": "e5d6",
+      "san": "exd6",
+      "count": 1
+     }
+    ],
+    "eco": "B02",
+    "opening": "Alekhine Defense",
+    "games": [
+     "https://lichess.org/enpass01#4"
+    ]
+   },
+   {
+    "key": "rnbqk1nr/ppp1ppbp/6p1/3pP3/8/2K5/PPPP1PPP/RNBQ1BNR w kq -",
+    "fen": "rnbqk1nr/ppp1ppbp/6p1/3pP3/8/2K5/PPPP1PPP/RNBQ1BNR w kq - 0 6",
+    "orientation": "white",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 25.0,
+    "raw_avg_loss": 25.0,
+    "score": 25.0,
+    "best": "c3b3",
+    "best_san": "Kb3",
+    "acceptable": [
+     "c3b3"
+    ],
+    "played": [
+     {
+      "uci": "c3d3",
+      "san": "Kd3",
+      "count": 1
+     }
+    ],
+    "eco": "B06",
+    "opening": "Modern Defense",
+    "games": [
+     "https://lichess.org/enpass02#10"
+    ]
+   }
+  ],
+  "progress": [
+   [
+    1,
+    4
+   ],
+   [
+    2,
+    4
+   ],
+   [
+    3,
+    4
+   ],
+   [
+    4,
+    4
+   ]
+  ]
+ }
+}

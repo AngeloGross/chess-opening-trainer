@@ -1,0 +1,162 @@
+{
+ "name": "black-side",
+ "scenarios": [
+  "loss is clamped at zero when the move gains eval",
+  "black's mistake measured from his side (loss 60), URL /black#1, orientation black"
+ ],
+ "user": "AngelOgro",
+ "settings": {
+  "max_moves": 15,
+  "threshold": 20
+ },
+ "games": [
+  {
+   "id": "blackx01",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791444124876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 c5 Nf3",
+   "opening": {
+    "eco": "B27",
+    "name": "Sicilian Defense",
+    "ply": 2
+   }
+  },
+  {
+   "id": "blackx02",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791443524876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 a5 d4",
+   "opening": {
+    "eco": "B00",
+    "name": "Corn Stalk Defense",
+    "ply": 2
+   }
+  }
+ ],
+ "fakeEngine": {
+  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -": [
+   "e7e5",
+   15
+  ],
+  "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -": [
+   "g1f3",
+   -50
+  ],
+  "rnbqkbnr/1ppppppp/8/p7/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -": [
+   "d2d4",
+   45
+  ]
+ },
+ "topMoves": {},
+ "expected": {
+  "results": [
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -"
+    ],
+    "mistake": null,
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -"
+    ]
+   },
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+     "key": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "ply": 1,
+     "played": "a7a5",
+     "played_san": "a5",
+     "best": "e7e5",
+     "best_san": "e5",
+     "loss": 60,
+     "eval_best": 15
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/1ppppppp/8/p7/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -"
+    ]
+   }
+  ],
+  "positions": [
+   {
+    "key": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+    "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+    "orientation": "black",
+    "errors": 1,
+    "reached": 2,
+    "avg_loss": 60.0,
+    "raw_avg_loss": 60.0,
+    "score": 60.0,
+    "best": "e7e5",
+    "best_san": "e5",
+    "acceptable": [
+     "e7e5"
+    ],
+    "played": [
+     {
+      "uci": "a7a5",
+      "san": "a5",
+      "count": 1
+     }
+    ],
+    "eco": "B00",
+    "opening": "Corn Stalk Defense",
+    "games": [
+     "https://lichess.org/blackx02/black#1"
+    ]
+   }
+  ],
+  "progress": [
+   [
+    1,
+    1
+   ]
+  ]
+ }
+}

@@ -1,0 +1,313 @@
+{
+ "name": "loss-cap-ranking",
+ "scenarios": [
+  "a 3000 cp blunder is capped at 500: avg_loss and score 500, raw_avg_loss 3000",
+  "3 x 200 = 600 ranks above the single capped blunder"
+ ],
+ "user": "AngelOgro",
+ "settings": {
+  "max_moves": 15,
+  "threshold": 20
+ },
+ "games": [
+  {
+   "id": "lossca01",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791444124876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 f6 d4",
+   "opening": {
+    "eco": "B00",
+    "name": "Barnes Defense",
+    "ply": 2
+   }
+  },
+  {
+   "id": "lossca02",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791443524876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "d4 g5 Bxg5",
+   "opening": {
+    "eco": "A40",
+    "name": "Borg Defense",
+    "ply": 2
+   }
+  },
+  {
+   "id": "lossca03",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791442924876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "d4 g5 Bxg5",
+   "opening": {
+    "eco": "A40",
+    "name": "Borg Defense",
+    "ply": 2
+   }
+  },
+  {
+   "id": "lossca04",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791442324876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "d4 g5 Bxg5",
+   "opening": {
+    "eco": "A40",
+    "name": "Borg Defense",
+    "ply": 2
+   }
+  }
+ ],
+ "fakeEngine": {
+  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -": [
+   "e7e5",
+   20
+  ],
+  "rnbqkbnr/ppppp1pp/5p2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -": [
+   "d2d4",
+   2980
+  ],
+  "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -": [
+   "d7d5",
+   20
+  ],
+  "rnbqkbnr/pppppp1p/8/6p1/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -": [
+   "c1g5",
+   180
+  ]
+ },
+ "topMoves": {},
+ "expected": {
+  "results": [
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+     "key": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "ply": 1,
+     "played": "f7f6",
+     "played_san": "f6",
+     "best": "e7e5",
+     "best_san": "e5",
+     "loss": 3000,
+     "eval_best": 20
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/ppppp1pp/5p2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -"
+    ]
+   },
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
+     "key": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -",
+     "ply": 1,
+     "played": "g7g5",
+     "played_san": "g5",
+     "best": "d7d5",
+     "best_san": "d5",
+     "loss": 200,
+     "eval_best": 20
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pppppp1p/8/6p1/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -"
+    ]
+   },
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
+     "key": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -",
+     "ply": 1,
+     "played": "g7g5",
+     "played_san": "g5",
+     "best": "d7d5",
+     "best_san": "d5",
+     "loss": 200,
+     "eval_best": 20
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pppppp1p/8/6p1/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -"
+    ]
+   },
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
+     "key": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -",
+     "ply": 1,
+     "played": "g7g5",
+     "played_san": "g5",
+     "best": "d7d5",
+     "best_san": "d5",
+     "loss": 200,
+     "eval_best": 20
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pppppp1p/8/6p1/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -"
+    ]
+   }
+  ],
+  "positions": [
+   {
+    "key": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -",
+    "fen": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
+    "orientation": "black",
+    "errors": 3,
+    "reached": 3,
+    "avg_loss": 200.0,
+    "raw_avg_loss": 200.0,
+    "score": 600.0,
+    "best": "d7d5",
+    "best_san": "d5",
+    "acceptable": [
+     "d7d5"
+    ],
+    "played": [
+     {
+      "uci": "g7g5",
+      "san": "g5",
+      "count": 3
+     }
+    ],
+    "eco": "A40",
+    "opening": "Borg Defense",
+    "games": [
+     "https://lichess.org/lossca02/black#1",
+     "https://lichess.org/lossca03/black#1",
+     "https://lichess.org/lossca04/black#1"
+    ]
+   },
+   {
+    "key": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+    "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+    "orientation": "black",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 500.0,
+    "raw_avg_loss": 3000.0,
+    "score": 500.0,
+    "best": "e7e5",
+    "best_san": "e5",
+    "acceptable": [
+     "e7e5"
+    ],
+    "played": [
+     {
+      "uci": "f7f6",
+      "san": "f6",
+      "count": 1
+     }
+    ],
+    "eco": "B00",
+    "opening": "Barnes Defense",
+    "games": [
+     "https://lichess.org/lossca01/black#1"
+    ]
+   }
+  ],
+  "progress": [
+   [
+    1,
+    2
+   ],
+   [
+    2,
+    2
+   ]
+  ]
+ }
+}

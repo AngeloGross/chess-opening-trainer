@@ -8,3 +8,6 @@ tools/stockfish/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# Node (dev-only tooling)
+node_modules/

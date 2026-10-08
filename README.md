@@ -145,8 +145,15 @@ Everything generated is git-ignored:
 ## Tests
 
 ```sh
-uv run pytest
+uv run pytest            # Python CLI, including the shared fixtures
+npm install              # once; dev-only, the site itself has no build step
+npm test                 # JS port in web/core/ against the same fixtures
 ```
+
+`spec/fixtures/*.json` are shared by both suites, so the Python CLI and the browser port must
+agree on every mistake and every ranking. Python is the reference: after changing a rule there,
+run `uv run python tools/make_fixture.py` to regenerate the expected values, then make the JS
+port pass again (`--check` only reports stale fixtures).
 
 ## License
 

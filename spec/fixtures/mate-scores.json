@@ -1,0 +1,170 @@
+{
+ "name": "mate-scores",
+ "scenarios": [
+  "a mate eval (+/-10000) is beyond 300 cp: decided, skipped",
+  "blundering into mate: loss 9960, capped at 500 for avg_loss and score, raw_avg_loss uncapped",
+  "empty MultiPV: best and acceptable fall back to the single-PV best (Nc3)"
+ ],
+ "user": "AngelOgro",
+ "settings": {
+  "max_moves": 15,
+  "threshold": 20
+ },
+ "games": [
+  {
+   "id": "matexx01",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791444124876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "d4 d5 c4",
+   "opening": {
+    "eco": "D06",
+    "name": "Queen's Gambit",
+    "ply": 2
+   }
+  },
+  {
+   "id": "matexx02",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791443524876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "f3 e5 g4 Qh4#",
+   "opening": {
+    "eco": "A00",
+    "name": "Barnes Opening: Fool's Mate",
+    "ply": 2
+   }
+  }
+ ],
+ "fakeEngine": {
+  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -": [
+   "e2e4",
+   10000
+  ],
+  "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -": [
+   "c2c4",
+   -10000
+  ],
+  "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq -": [
+   "b1c3",
+   -40
+  ],
+  "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq -": [
+   "d8h4",
+   10000
+  ]
+ },
+ "topMoves": {},
+ "expected": {
+  "results": [
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -"
+    ],
+    "mistake": null,
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -"
+    ]
+   },
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq - 0 2",
+     "key": "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq -",
+     "ply": 2,
+     "played": "g2g4",
+     "played_san": "g4",
+     "best": "b1c3",
+     "best_san": "Nc3",
+     "loss": 9960,
+     "eval_best": -40
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq -"
+    ]
+   }
+  ],
+  "positions": [
+   {
+    "key": "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq -",
+    "fen": "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq - 0 2",
+    "orientation": "white",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 500.0,
+    "raw_avg_loss": 9960.0,
+    "score": 500.0,
+    "best": "b1c3",
+    "best_san": "Nc3",
+    "acceptable": [
+     "b1c3"
+    ],
+    "played": [
+     {
+      "uci": "g2g4",
+      "san": "g4",
+      "count": 1
+     }
+    ],
+    "eco": "A00",
+    "opening": "Barnes Opening: Fool's Mate",
+    "games": [
+     "https://lichess.org/matexx02#2"
+    ]
+   }
+  ],
+  "progress": [
+   [
+    1,
+    1
+   ]
+  ]
+ }
+}
