@@ -1,0 +1,10 @@
+# Generated data
+data/
+web/positions.json
+tools/stockfish/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/

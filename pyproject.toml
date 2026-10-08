@@ -1,0 +1,26 @@
+[project]
+name = "opening-trainer"
+version = "0.1.0"
+description = "Find and drill the opening positions where you lose eval in your own Lichess games."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "chess>=1.11",
+    "requests>=2.32",
+]
+
+[project.scripts]
+trainer = "opening_trainer.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["opening_trainer"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
