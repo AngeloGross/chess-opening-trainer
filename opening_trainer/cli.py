@@ -183,15 +183,48 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
     extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map, ".wasm": "application/wasm"}
 
 
+def _lan_addresses() -> list[str]:
+    """IPv4 addresses other devices on the network can use to reach this machine (best effort)."""
+    addrs: set[str] = set()
+    try:
+        # No packet is sent: connecting a UDP socket only picks the outgoing interface.
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("192.0.2.1", 9))
+            addrs.add(s.getsockname()[0])
+    except OSError:
+        pass
+    try:
+        addrs.update(info[4][0] for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET))
+    except OSError:
+        pass
+    return sorted(a for a in addrs if not a.startswith("127."))
+
+
+def serve_urls(host: str, port: int, lan: list[str]) -> list[str]:
+    """URLs to print: the local one first, then the ones reachable from other devices."""
+    local = f"http://127.0.0.1:{port}/"
+    if host in ("127.0.0.1", "localhost", "::1"):
+        return [local]
+    if host in ("0.0.0.0", "::", ""):
+        return [local, *(f"http://{a}:{port}/" for a in lan)]
+    return [f"http://{host}:{port}/"]
+
+
 def cmd_serve(args: argparse.Namespace) -> None:
     if not POSITIONS_PATH.exists():
         print("Note: web/positions.json is missing. Run `uv run trainer update` first.")
     handler = functools.partial(_Handler, directory=str(WEB_DIR))
-    with _Server(("127.0.0.1", args.port), handler) as server:
-        url = f"http://127.0.0.1:{args.port}/"
-        print(f"Serving {WEB_DIR} at {url} (Ctrl+C to stop)")
+    with _Server((args.host, args.port), handler) as server:
+        urls = serve_urls(args.host, args.port, _lan_addresses())
+        print(f"Serving {WEB_DIR} at {urls[0]} (Ctrl+C to stop)")
+        if len(urls) > 1 or urls[0] != f"http://127.0.0.1:{args.port}/":
+            print("Reachable from other devices on your network (e.g. your phone) at:")
+            for url in urls[1:] if len(urls) > 1 else urls:
+                print(f"  {url}")
+            print("Anyone on this network can open these pages. On Windows, allow Python through the "
+                  "firewall for private networks only. Plain HTTP: fine for testing, not for sharing.")
         if not args.no_browser:
-            webbrowser.open(url)
+            webbrowser.open(urls[0])
         try:
             server.serve_forever()
         except KeyboardInterrupt:
@@ -231,6 +264,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_update)
 
     p = sub.add_parser("serve", help="serve the trainer page and open the browser")
+    p.add_argument("--host", default="127.0.0.1",
+                   help="address to listen on; 0.0.0.0 makes it reachable from your phone on the same network "
+                        "(default: %(default)s, this computer only)")
     p.add_argument("--port", type=_port, default=8000)
     p.add_argument("--no-browser", action="store_true", help="do not open a browser")
     p.set_defaults(func=cmd_serve)

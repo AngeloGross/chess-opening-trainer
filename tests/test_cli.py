@@ -52,3 +52,17 @@ def test_serve_sends_wasm_as_application_wasm():
     from opening_trainer.cli import _Handler
 
     assert _Handler.extensions_map[".wasm"] == "application/wasm"
+
+
+def test_serve_defaults_to_this_computer_only():
+    args = build_parser().parse_args(["serve"])
+    assert args.host == "127.0.0.1"
+
+
+def test_serve_urls():
+    from opening_trainer.cli import serve_urls
+
+    assert serve_urls("127.0.0.1", 8000, ["192.168.1.23"]) == ["http://127.0.0.1:8000/"]
+    assert serve_urls("0.0.0.0", 8000, ["192.168.1.23", "10.0.0.5"]) == [
+        "http://127.0.0.1:8000/", "http://192.168.1.23:8000/", "http://10.0.0.5:8000/"]
+    assert serve_urls("192.168.1.23", 9000, []) == ["http://192.168.1.23:9000/"]

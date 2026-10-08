@@ -55,6 +55,14 @@ Play the move you think is best. A move counts as correct if it is within the mi
 (20 cp) of the engine's best move. "Reveal" shows the answer and the move you usually played;
 every position links to the Lichess analysis board and to the games it came from.
 
+### Testing on your phone
+
+`uv run trainer serve --host 0.0.0.0` makes the pages reachable from other devices on the same
+Wi-Fi; it prints the addresses to open on the phone (e.g. `http://192.168.1.23:8000/`). On Windows,
+allow Python through the firewall for **private** networks only when asked. Everyone on that network
+can open the pages while it runs, so use it at home, not on public or company networks. Plain
+HTTP is enough for the trainer, `spike/lichess.html` and `spike/engine.html`.
+
 ### Several people on one computer
 
 Games are stored per user, so switching with `--user OtherName` is fine, but `web/positions.json`
@@ -120,7 +128,7 @@ Check it works: `printf 'uci\nquit\n' | tools/stockfish/stockfish` should print 
 | `--threshold CP` | `20` | loss in centipawns that counts as a mistake |
 | `--depth N` | `18` | Stockfish search depth |
 
-`serve` accepts `--port` and `--no-browser`. Running `python -m http.server -d web` works as well.
+`serve` accepts `--host` (default `127.0.0.1`; `0.0.0.0` for your phone), `--port` and `--no-browser`. Running `python -m http.server -d web` works as well.
 
 ## How a mistake is found
 
