@@ -233,7 +233,16 @@ Worker-time per game ≈ 4.2 × 100 ms + 0.8 × 700 ms ≈ **1.0 s at depth 14**
 | Device (assumed) | Workers | 500 games @ d14 | 500 games @ d18 |
 |---|---|---|---|
 | Desktop or laptop | 4 | **~2 min** | ~13 min |
-| Phone (3–5× slower per core, unverified) | 2 | ~12–20 min | 1.5–2 h |
+| Phone, **measured** (see below) | 2 | **~1.5–2 h** | many hours; not offered |
+
+**Phone measurement (2026-10-08).** Angelo's phone on home Wi-Fi with `spike/engine.html`, benchmark of 20 positions at depth 14, MultiPV 1, 2 workers: **25.8 s, 0.78 positions/s**, so about 2.6 s per search per worker. The desktop runs 94 ms per search (§3.2), so this phone is **about 27× slower per engine**, far beyond the 3–5× assumed earlier. The phone model was not recorded; thermal throttling, a power-saving mode or effectively one usable core may contribute. Per game that is 4.2 × 2.6 s + 0.8 × ~18 s ≈ 25 s of worker time, about 12 s wall-clock with 2 workers. **500 games take roughly 1.5–2 h on this phone.**
+
+**Consequences for the design:**
+
+1. **Mobile defaults:** depth **12** and the **150 most recent games**, about 2× cheaper per search than depth 14. That's an estimated 10–15 min, and the ETA comes from a 5-position calibration run on the device before starting (slice 7), never from a fixed table.
+2. **Lazy MultiPV on mobile.** Run the expensive MultiPV-5 search only for the top 30 positions by score, and the rest when a position is first opened in the trainer. MultiPV is roughly 60 % of the per-game cost on the phone. Desktop keeps eager MultiPV (§8 chunking).
+3. **"Analyse on the computer, train on the phone" is the primary mobile story.** A friend runs the analysis in a desktop browser (or the CLI) and moves the positions document to the phone with the export/import of slice 8 (a file or a QR/link with a compressed document). Phone-only analysis stays possible with the reduced defaults.
+4. **Re-measure** on 2–3 more phones (one iPhone, one mid-range Android) when the release candidate is deployed, and record the model next time.
 
 **Defaults:** **depth 14 and the 500 most recent games**. Download takes about 25 s and analysis a few minutes on a laptop. That is short enough that a friend sees results in one sitting. Depth 14 is also what the current `positions.json` was generated with. "Thorough (18)" and up to 2,000 games are opt-in, with the ETA shown before starting. The other defaults (perfs, 15 moves, 20 cp) stay as in the CLI.
 
