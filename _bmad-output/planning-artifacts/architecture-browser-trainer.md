@@ -297,6 +297,8 @@ Revisit this only if the UI grows into a component framework.
 | Storage eviction (Safari 7-day rule, best-effort) | documented by MDN | `navigator.storage.persist()`; export/import backup; worst case is re-analysis |
 | Someone wants multithreaded search later | not needed now | coi-serviceworker on Pages, or move hosting to Cloudflare Pages/Netlify with `_headers`; switch to `stockfish-19-lite.js` |
 
+**Decision (2026-10-08): browser and CLI may flag different borderline mistakes.** Slice 5 compared both on the same 100 games (depth 12, threshold 20 cp): the first mistake agreed in 46/100 games, mistake keys 43 shared (browser 92, CLI 75), and top-10 overlap was 2/10. The browser code is exact: Python run on the browser's own evals reproduces its document byte for byte. The gap comes from the lite network versus the full one; every disagreement had a loss within 30 cp of the threshold. **Accepted as is.** Both find real inaccuracies, and a 20 cp threshold is close to engine noise for any engine. Revisit only if users report the training set feels arbitrary; the measurements and options are in the slice 5 notes (raise the browser default to 30–40 cp, or the full net).
+
 ## 12. Suggested implementation slices
 
 Each slice ends in something demoable on the deployed Pages URL.
