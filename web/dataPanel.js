@@ -2,6 +2,7 @@
 // backup or the CLI's positions.json) and "Send to phone" (link + QR code). The formats live in
 // core/backup.js and core/transfer.js, the IndexedDB side in store/backupStore.js.
 import { ImportError, MAX_FILE_BYTES, backupFileName, describeFile, formatBytes, readAnalysisFile } from './core/backup.js';
+import { classifyError, messageFor, messageText } from './core/messages.js';
 import { qrSvg } from './core/qr.js';
 import { compressionSupported, planTransfer } from './core/transfer.js';
 import { applyImport, collectBackup, existingOf, readStats } from './store/backupStore.js';
@@ -139,7 +140,10 @@ export function mountDataPanel({ db, storage, current, onImported, note, busy })
       onImported(result);
     } catch (err) {
       console.error(err);
-      showImportError(`The import failed (${err?.message ?? err}). Nothing was changed.`);
+      const kind = classifyError(err);
+      showImportError(kind === 'quota' || kind === 'storage_unavailable'
+        ? `${messageText(messageFor(kind))} Nothing was changed.`
+        : `The import failed (${err?.message ?? err}). Nothing was changed.`);
     }
   }
 
@@ -150,7 +154,7 @@ export function mountDataPanel({ db, storage, current, onImported, note, busy })
     if (!doc) return;
     const result = $('send-result');
     if (!compressionSupported()) {
-      $('send-error').textContent = 'This browser cannot compress the analysis into a link (CompressionStream is missing). Export a backup and open it on the phone with “Load a file” instead.';
+      $('send-error').textContent = messageText(messageFor('no_compression'));
       $('send-error').hidden = false;
       return;
     }

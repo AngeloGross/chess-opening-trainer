@@ -16,8 +16,23 @@
 // - A "Send to phone" link (`#import=…`) is imported at start-up (merge, no question asked: nothing is
 //   lost), the fragment is removed from the address bar, and the trainer opens.
 // - Persistent storage is requested after the first analysis checkpoint and after an import.
+// - Slice 7 (UX polish):
+//   - ETA: core/calibration.js measures the real engine pool at the chosen depth (cached per device and
+//     depth in the settings store, "Re-measure" in Settings); core/eta.js turns it into "About 12 min for
+//     150 games at depth 12 on this device" before Start, and blends it with the run's real throughput.
+//   - Worker count: the calibration's rule (one worker if it is as fast as two on a phone).
+//   - Lazy MultiPV on open: the trainer asks `alternativesFor` for entries marked `unchecked`; it uses the
+//     running coordinator, or an idle one on a lazily started pool (a returning visit).
+//   - Messages: every failure goes through core/messages.js (what happened + what to do next).
+//   - Wake Lock during the run (wakeLock.js) and a "keep the screen on" note on phones.
 
+import { checkAlternatives } from './analysis/alternatives.js';
 import { Coordinator, DEFAULT_PERFS, LAZY_TOP, defaultOptions } from './analysis/coordinator.js';
+import {
+  CALIBRATION_SETTING, cachedCalibration, calibrate, deviceFingerprint, preferredWorkers, withCalibration,
+} from './core/calibration.js';
+import { estimateRun, estimateText, formatDuration, liveEtaMs } from './core/eta.js';
+import { classifyError, messageFor, messageText, retryCountdownText } from './core/messages.js';
 import { chooseStart, cliOffer, loadCliDoc } from './core/startChoice.js';
 import { TransferError, decodeFragment, payloadOf } from './core/transfer.js';
 import { mountDataPanel } from './dataPanel.js';
@@ -25,6 +40,7 @@ import { EnginePool, defaultWorkerCount } from './engine/pool.js';
 import { applyImport, importMarkerName } from './store/backupStore.js';
 import { getPositions, getSetting, openDb, requestPersistence, setSetting, userIdOf } from './store/db.js';
 import { mountTrainer } from './trainer.js';
+import { createWakeLock } from './wakeLock.js';
 
 const $ = (id) => document.getElementById(id);
 const DEFAULTS = defaultOptions();
@@ -37,7 +53,11 @@ const NAME_PATTERN = /^[A-Za-z0-9_-]{2,30}$/;
 const app = (window.app = {
   view: 'loading', source: null, doc: null, cliDoc: null, trainer: null, coordinator: null,
   busy: false, progress: null, events: [], imported: null, transfer: null,
+  calibration: null, estimate: null, wakeLock: null, poolSize: 0,
 });
+const FINGERPRINT = deviceFingerprint(globalThis.navigator ?? {}, DEFAULTS.mobile);
+/** WebAssembly and module workers are what the engine needs; without them nothing can be analysed here. */
+const ENGINE_POSSIBLE = typeof WebAssembly === 'object' && typeof Worker === 'function';
 
 /** @type {IDBDatabase} */
 let db;
@@ -48,6 +68,23 @@ let fetchWorker = null;
 /** @type {ReturnType<typeof mountDataPanel>} */
 let dataPanel;
 let persistenceAsked = false;
+/** settings value `calibration` (core/calibration.js), loaded at start-up */
+let calStore = null;
+/** @type {Promise<any>} calibrations run one at a time */
+let calChain = Promise.resolve();
+let calRunning = null; // depth being measured, or null
+/** @type {import('./core/messages.js').Message|null} the last calibration failure */
+let calError = null;
+let calTimer = null;
+/** @type {{pool: EnginePool, key: string, co: Coordinator}|null} coordinator for on-demand MultiPV outside a run */
+let idle = null;
+const wake = createWakeLock({
+  onChange: (state, err) => {
+    app.wakeLock = state;
+    note('wakelock', { state, error: err ? String(err?.message ?? err) : undefined });
+    renderKeepAwake();
+  },
+});
 
 function note(type, extra = {}) {
   app.events.push({ type, at: Date.now(), ...extra });
@@ -55,27 +92,14 @@ function note(type, extra = {}) {
 
 // ---------- formatting ----------
 
-function duration(ms) {
-  const s = Math.max(1, Math.round(ms / 1000));
-  if (s < 60) return `${s} s`;
-  const m = Math.round(s / 60);
-  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
-}
+const duration = formatDuration;
 
 function when(generated) {
   const d = new Date(generated ?? '');
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-function lichessMessage(kind, name, message) {
-  switch (kind) {
-    case 'not_found': return `There is no Lichess player called “${name}”. Check the spelling.`;
-    case 'closed': return `The Lichess account “${name}” is closed.`;
-    case 'rate_limited': return 'Lichess asked us to slow down. Wait a minute, then press Start again.';
-    case 'network': return 'Could not reach Lichess. Check the internet connection, wait a minute and try again.';
-    default: return message || 'Something went wrong while downloading the games.';
-  }
-}
+const online = () => globalThis.navigator?.onLine !== false;
 
 // ---------- views ----------
 
@@ -111,12 +135,30 @@ function importedLabel(marker) {
   return 'From a backup';
 }
 
-function showError(text) {
-  $('start-error').textContent = text;
-  $('start-error').hidden = !text;
+/** @param {string|import('./core/messages.js').Message} error  a message gets its hint on a second line */
+function showError(error) {
+  const el = $('start-error');
+  if (error && typeof error === 'object') {
+    const hint = document.createElement('span');
+    hint.className = 'hint';
+    hint.textContent = error.hint;
+    el.replaceChildren(document.createTextNode(error.text), hint);
+  } else el.textContent = error || '';
+  el.hidden = !error;
+}
+
+/** A failure: on the start screen with its hint, otherwise in the progress panel. */
+function showFailure(m) {
+  note('message', { kind: m.kind, text: messageText(m) });
+  if (app.view === 'trainer') showProgress({ phase: messageText(m) });
+  else {
+    hideProgress();
+    showStart(m);
+  }
 }
 
 function showStart(error = '') {
+  if (!app.busy) renderEta();
   const offer = cliOffer(app.cliDoc);
   $('cli-offer').hidden = !offer;
   if (offer) {
@@ -148,7 +190,7 @@ function showDoc(doc, source) {
     app.trainer?.destroy();
     app.source = source;
     setView('trainer'); // visible before mounting, so chessground can measure the board
-    app.trainer = mountTrainer($('trainer'), doc, { migrateLegacyStats: source === 'cli' });
+    app.trainer = mountTrainer($('trainer'), doc, { migrateLegacyStats: source === 'cli', alternatives: alternativesFor });
     note('trainer-mount', { source, positions: doc.positions.length, games: doc.games });
   }
   $('player').textContent = doc.user ? `for ${doc.user}` : '';
@@ -204,7 +246,9 @@ async function importFromLink() {
     return true;
   } catch (err) {
     console.error(err);
-    const text = err instanceof TransferError ? err.message : `The link could not be imported (${err?.message ?? err}).`;
+    const kind = classifyError(err, { where: 'link' });
+    const text = kind === 'no_decompression' ? messageText(messageFor(kind))
+      : err instanceof TransferError ? err.message : `The link could not be imported (${err?.message ?? err}).`;
     note('link-error', { message: text });
     if (app.view === 'loading') return text;
     if (app.view === 'trainer') showProgress({ phase: text });
@@ -239,6 +283,169 @@ function readOptions() {
     maxGames: Number.isFinite(games) && games >= 1 ? Math.min(games, MAX_GAMES_LIMIT) : DEFAULTS.maxGames,
     depth: Number($('opt-depth').value) || DEFAULTS.depth,
   };
+}
+
+// ---------- engine pool, calibration and ETA ----------
+
+/** The pool, started on first use; `size` replaces a pool of another size (never during a run). */
+function ensurePool(size) {
+  const want = size ?? pool?.size ?? preferredWorkers(calStore, FINGERPRINT) ?? defaultWorkerCount();
+  if (pool && pool.size === want && pool.workers > 0) return pool;
+  pool?.terminate();
+  idle = null;
+  pool = new EnginePool({ size: want });
+  app.poolSize = want;
+  app.enginePool = pool; // for the console and the headless checks
+  note('pool', { size: want });
+  return pool;
+}
+
+function cachedCal(depth) {
+  const cal = cachedCalibration(calStore, { fingerprint: FINGERPRINT, depth, now: Date.now() });
+  if (cal) app.calibration = cal;
+  return cal;
+}
+
+/**
+ * The device calibration at `depth`: cached, or measured now on the real pool (one at a time).
+ * @param {number} depth @param {{force?: boolean, onStep?: (done: number, total: number) => void}} [opts]
+ */
+function ensureCalibration(depth, { force = false, onStep } = {}) {
+  const job = calChain.catch(() => {}).then(async () => {
+    const cached = force ? null : cachedCal(depth);
+    if (cached) return cached;
+    if (!ENGINE_POSSIBLE) throw Object.assign(new Error('WebAssembly or Web Workers are missing'), { name: 'EngineAnalysisError' });
+    calRunning = depth;
+    renderEta();
+    try {
+      const measured = ensurePool(defaultWorkerCount()); // the rule compares against the default count
+      note('calibration-start', { depth, workers: measured.size });
+      const cal = await calibrate(measured, depth, { compareSingle: DEFAULTS.mobile, onStep });
+      calStore = withCalibration(calStore, FINGERPRINT, cal);
+      await setSetting(db, CALIBRATION_SETTING, calStore).catch((err) => note('calibration-not-saved', { message: String(err?.message ?? err) }));
+      calError = null;
+      app.calibration = cal;
+      note('calibration', cal);
+      return cal;
+    } catch (err) {
+      calError = messageFor(classifyError(err, { where: 'engine' }), { detail: String(err?.message ?? err) });
+      pool?.terminate();
+      pool = null;
+      throw err;
+    } finally {
+      calRunning = null;
+    }
+  });
+  calChain = job;
+  return job;
+}
+
+/** Measure soon (debounced) for the depth on screen, unless it is cached or already being measured. */
+function scheduleCalibration() {
+  clearTimeout(calTimer);
+  calTimer = setTimeout(() => {
+    const { depth } = readOptions();
+    if (app.busy || app.view !== 'start' || cachedCal(depth) || calRunning === depth || calError) return;
+    ensureCalibration(depth).then(renderEta, renderEta);
+  }, 300);
+}
+
+/** The ETA line before Start and the measurement line in Settings. */
+function renderEta() {
+  const o = readOptions();
+  const cal = cachedCal(o.depth);
+  const eta = $('eta');
+  const info = $('calibration-info');
+  $('remeasure').hidden = !ENGINE_POSSIBLE || calRunning !== null;
+  if (!ENGINE_POSSIBLE) {
+    eta.textContent = messageText(messageFor('engine_failed'));
+    eta.className = 'small error';
+    info.textContent = '';
+    return;
+  }
+  eta.className = 'small';
+  if (cal) {
+    const est = estimateRun({ games: o.maxGames, rate: cal.rate, multipv: DEFAULTS.multipv, lazyTop: LAZY_TOP });
+    eta.textContent = estimateText(est, { games: o.maxGames, depth: o.depth });
+    const engines = cal.workers === 1 ? '1 engine' : `${cal.workers} engines`;
+    const single = cal.singleRate !== null && cal.workers !== cal.poolWorkers
+      ? ` (${cal.poolWorkers} engines were no faster than one here)` : '';
+    info.textContent = `Measured on this device: ${cal.rate.toFixed(1)} positions/s at depth ${cal.depth} with ${engines}${single}, ${when(new Date(cal.at))}.`;
+  } else if (calRunning !== null) {
+    eta.textContent = `Measuring how fast this device analyses at depth ${calRunning}…`;
+    info.textContent = '';
+  } else if (calError) {
+    eta.textContent = messageText(calError);
+    eta.className = 'small error';
+    info.textContent = '';
+  } else {
+    eta.textContent = `Measuring how fast this device analyses at depth ${o.depth}…`;
+    info.textContent = '';
+    scheduleCalibration();
+  }
+}
+
+/** The run's estimate (before it starts), kept for the live ETA. */
+function planEstimate(cal, options) {
+  const est = estimateRun({ games: options.maxGames, rate: cal.rate, multipv: DEFAULTS.multipv, lazyTop: LAZY_TOP });
+  app.estimate = { rate: cal.rate, workers: cal.workers, depth: cal.depth, games: options.maxGames, ...est };
+  return est;
+}
+
+// ---------- lazy MultiPV on open ----------
+
+/**
+ * The accept window of an `unchecked` entry (trainer.js asks when it shows one): searched by the running
+ * coordinator when it analyses the same user and depth, otherwise by an idle coordinator on the pool,
+ * started now if needed. The stored document is updated, so a reload shows the full window.
+ * @param {any} entry
+ */
+async function alternativesFor(entry) {
+  const doc = app.doc;
+  if (!doc?.user || !db) throw new Error('no stored document to update');
+  const user = doc.user;
+  const depth = doc.settings?.depth ?? DEFAULTS.depth;
+  const threshold = doc.settings?.threshold ?? DEFAULTS.threshold;
+  const co = app.coordinator;
+  let topMoves;
+  let via;
+  if (co && co.progress.state === 'running' && userIdOf(co.user) === userIdOf(user) && co.opts.depth === depth && co.opts.threshold === threshold) {
+    topMoves = (fen) => co.topMoves(fen);
+    via = 'run';
+  } else {
+    if (!ENGINE_POSSIBLE) throw new Error('no engine in this browser');
+    const p = ensurePool();
+    const key = `${userIdOf(user)}|${depth}|${threshold}`;
+    if (!idle || idle.pool !== p || idle.key !== key) {
+      idle = {
+        pool: p, key,
+        co: new Coordinator({ db, pool: p, user, options: {
+          depth, threshold, maxMoves: doc.settings?.max_moves ?? DEFAULTS.maxMoves, perfs: doc.settings?.perf ?? DEFAULTS.perfs, multipv: 'lazy',
+        } }),
+      };
+    }
+    const c = idle.co;
+    topMoves = (fen) => c.topMoves(fen);
+    via = 'idle';
+  }
+  const t = Date.now();
+  note('alternatives-start', { key: entry.key, via });
+  const updated = await checkAlternatives({ db, user, entry, threshold, topMoves });
+  if (app.doc?.positions && userIdOf(app.doc.user ?? '') === userIdOf(user)) {
+    app.doc = { ...app.doc, positions: app.doc.positions.map((p) => (p.key === updated.key && p.unchecked ? updated : p)) };
+  }
+  note('alternatives-done', { key: entry.key, via, ms: Date.now() - t, acceptable: updated.acceptable, best: updated.best });
+  return updated;
+}
+
+// ---------- mobile run comfort ----------
+
+function renderKeepAwake() {
+  const el = $('keep-awake');
+  el.hidden = !(DEFAULTS.mobile && app.busy);
+  el.textContent = wake.held
+    ? 'The screen stays on while this runs. Keep this tab in front: phones slow down or pause tabs in the background.'
+    : 'Keep the screen on and this tab in front: phones slow down or pause tabs in the background. Closing the tab only pauses; “Update” continues later.';
 }
 
 function renderDefaults() {
@@ -282,7 +489,16 @@ function showAnalysisProgress(p) {
   let phase = `Analysing games: ${p.gamesDone} / ${p.gamesTotal}`;
   if (paused) phase = `Paused at ${p.gamesDone} / ${p.gamesTotal} games`;
   else if (p.gamesTotal && !left && p.multipvDone < p.multipvTotal) phase = `Checking answers: ${p.multipvDone} / ${p.multipvTotal}`;
-  const eta = paused ? '' : left ? (p.etaMs === null ? ' · estimating the time left…' : ` · about ${duration(p.etaMs)} left`) : '';
+  let etaMs = p.etaMs;
+  const est = app.estimate;
+  if (est && p.gamesTotal) {
+    // The model's time per game, moving to the measured one as games finish (core/eta.js).
+    etaMs = liveEtaMs({ gamesLeft: left, gamesThisRun: p.gamesThisRun, activeMs: p.activeMs, modelPerGameMs: est.perGameMs,
+      multipvLeft: p.multipvTotal - p.multipvDone, rate: est.rate });
+  }
+  app.liveEtaMs = etaMs;
+  const busyTail = !left && p.multipvDone < p.multipvTotal;
+  const eta = paused ? '' : (left || busyTail) ? (etaMs === null ? ' · estimating the time left…' : ` · about ${duration(etaMs)} left`) : '';
   const detail = `${p.positions} positions · ${p.cacheHits} from the cache, ${p.engineSearches} engine searches`
     + ` · ${p.mistakes} mistake positions${eta}`;
   const running = p.state === 'running' || paused;
@@ -299,7 +515,14 @@ function download(user, maxGames) {
   return new Promise((resolve) => {
     const worker = (fetchWorker = new Worker(new URL('./lichess/fetch.worker.js', import.meta.url), { type: 'module' }));
     let name = user;
+    let countdown = null;
+    const endCountdown = () => {
+      clearInterval(countdown);
+      countdown = null;
+      $('stop').textContent = 'Stop';
+    };
     const end = (result) => {
+      endCountdown();
       worker.terminate();
       fetchWorker = null;
       resolve({ name, ...result });
@@ -309,16 +532,25 @@ function download(user, maxGames) {
       value: Math.min(1, m.stored / maxGames), detail: `${m.added} new${extra}`, stop: true,
     });
     worker.onmessage = ({ data: m }) => {
+      if (m.type !== 'retry' && m.type !== 'note') endCountdown();
       if (m.type === 'user') {
         name = m.name;
         showProgress({ phase: `Downloading ${name}'s games…`, value: null, stop: true });
       } else if (m.type === 'progress') downloading(m);
       else if (m.type === 'note') $('progress-detail').textContent = m.message;
       else if (m.type === 'retry') {
-        showProgress({ phase: `Lichess asked us to slow down. Trying again in ${Math.round(m.delayMs / 1000)} s…`, value: null, stop: true });
+        // One automatic retry after a minute (design §3.1): a visible countdown, "Cancel" stops it.
+        const until = Date.now() + m.delayMs;
+        note('retry', { kind: m.kind, delayMs: m.delayMs });
+        const tick = () => showProgress({ phase: retryCountdownText(m.kind, (until - Date.now()) / 1000), value: null,
+          detail: m.stored ? `${m.stored} games are already stored and stay.` : '', stop: true });
+        endCountdown();
+        tick();
+        $('stop').textContent = 'Cancel';
+        countdown = setInterval(tick, 1000);
       } else if (m.type === 'done') end({ kind: 'done', added: m.added, stored: m.stored });
       else if (m.type === 'stopped') end({ kind: 'stopped' });
-      else if (m.type === 'error') end({ kind: 'error', errorKind: m.kind, message: m.message });
+      else if (m.type === 'error') end({ kind: 'error', errorKind: m.kind, message: m.message, status: m.status });
     };
     worker.onerror = (e) => end({ kind: 'error', errorKind: 'internal', message: `The download could not start (${e.message}).` });
     showProgress({ phase: `Checking the Lichess name “${user}”…`, value: null, stop: true });
@@ -339,58 +571,97 @@ async function run(user, options) {
   showError('');
   if (app.view === 'start') $('start-form').hidden = true;
   note('run-start', { user, ...options });
+  renderKeepAwake();
   try {
+    if (!online()) {
+      showFailure(messageFor('offline'));
+      return;
+    }
+    // Calibration first (cached per device and depth): it gives the ETA and the worker count.
+    let cal = cachedCal(options.depth);
+    if (!cal) {
+      showProgress({ phase: 'Measuring how fast this device analyses…', value: 0, stop: false });
+      try {
+        cal = await ensureCalibration(options.depth, { onStep: (done, total) => showProgress({ phase: 'Measuring how fast this device analyses…', value: done / total }) });
+      } catch (err) {
+        console.error(err);
+        showFailure(calError ?? messageFor('engine_failed'));
+        return;
+      }
+    }
+    const est = planEstimate(cal, options);
+    note('estimate', { games: options.maxGames, depth: options.depth, totalMs: Math.round(est.totalMs), analysisMs: Math.round(est.analysisMs),
+      downloadMs: Math.round(est.downloadMs), rate: cal.rate, workers: cal.workers });
+    app.runStartedAt = Date.now();
+    wake.hold();
     const fetched = await download(user, options.maxGames);
     note('download-end', { kind: fetched.kind, added: fetched.added, stored: fetched.stored });
     if (fetched.kind !== 'done') {
-      const text = fetched.kind === 'stopped' ? 'Download stopped.' : lichessMessage(fetched.errorKind, fetched.name, fetched.message);
-      if (app.view === 'start') {
-        hideProgress();
-        showStart(fetched.kind === 'stopped' ? '' : text);
-      } else showProgress({ phase: text });
+      if (fetched.kind === 'stopped') {
+        if (app.view === 'start') {
+          hideProgress();
+          showStart('');
+        } else showProgress({ phase: 'Download stopped.' });
+      } else {
+        const kind = fetched.errorKind === 'network' && !online() ? 'offline' : fetched.errorKind;
+        showFailure(messageFor(kind, { name: fetched.name, status: fetched.status, detail: fetched.message }));
+      }
       return;
     }
     const name = fetched.name;
+    if (!fetched.stored) {
+      // Nothing in the selected time controls: say so before starting any engine.
+      showFailure(messageFor('no_games', { name, perfs: DEFAULT_PERFS }));
+      return;
+    }
     await setSetting(db, 'lastUser', name);
     await setSetting(db, 'lastSource', 'browser');
     await setSetting(db, OPTIONS_SETTING, options);
     await setSetting(db, importMarkerName(name), null); // the analysis below replaces an imported document
     $('name').value = name;
 
-    pool ??= new EnginePool({ size: defaultWorkerCount() });
+    ensurePool(cal.workers);
     const co = (app.coordinator = new Coordinator({
       db, pool, user: name,
       options: { maxGames: options.maxGames, depth: options.depth, multipv: DEFAULTS.multipv, lazyTop: LAZY_TOP },
-      onProgress: showAnalysisProgress,
+      onProgress: (p) => {
+        showAnalysisProgress(p);
+        if (p.state === 'paused') wake.release();
+        else if (p.state === 'running' && !wake.held) wake.hold();
+      },
       onCheckpoint: (doc) => {
         app.imported = null;
         showDoc(doc, 'browser');
         askPersistence('checkpoint');
       },
     }));
-    note('analysis-start', { user: name });
+    note('analysis-start', { user: name, workers: pool.size });
     const { state, doc, progress } = await co.run();
-    note('analysis-end', { state, positions: doc?.positions.length ?? 0, games: progress.gamesTotal, engineSearches: progress.engineSearches, cacheHits: progress.cacheHits });
+    const runMs = Date.now() - app.runStartedAt;
+    note('analysis-end', { state, positions: doc?.positions.length ?? 0, games: progress.gamesTotal, engineSearches: progress.engineSearches,
+      cacheHits: progress.cacheHits, analysisMs: progress.elapsedMs, runMs, estimatedMs: Math.round(est.totalMs) });
     if (!doc) {
-      const text = `No blitz, rapid or classical games of ${name} to analyse.`;
-      hideProgress();
-      if (app.view === 'start') showStart(text);
-      else showProgress({ phase: text });
+      showFailure(messageFor('no_games', { name, perfs: DEFAULT_PERFS }));
     } else if (state === 'stopped') {
       showProgress({ phase: `Stopped after ${progress.gamesDone} of ${progress.gamesTotal} games. “Update” continues where it stopped.` });
     } else {
-      showProgress({ phase: `Done: ${doc.positions.length} positions from ${doc.games} games (${duration(progress.elapsedMs)}).` });
+      showProgress({ phase: `Done: ${doc.positions.length} positions from ${doc.games} games in ${duration(runMs)} (estimated ${duration(est.totalMs)}).` });
     }
   } catch (err) {
     console.error(err);
-    note('run-error', { message: String(err?.message ?? err) });
+    note('run-error', { message: String(err?.message ?? err), name: err?.name });
     pool?.terminate();
     pool = null; // a failed engine pool is not reused
-    showProgress({ phase: `The analysis failed: ${err?.message ?? err}` });
+    idle = null;
+    const kind = classifyError(err, { online: online() });
+    showProgress({ phase: messageText(messageFor(kind, { detail: String(err?.message ?? err) })) });
     if (app.view === 'start') $('start-form').hidden = false;
   } finally {
     app.busy = false;
     app.coordinator = null;
+    app.estimate = null;
+    wake.release();
+    renderKeepAwake();
     renderBar();
   }
 }
@@ -421,9 +692,24 @@ function wire() {
   $('open-data').addEventListener('click', openData);
   $('open-data-start').addEventListener('click', openData);
   window.addEventListener('hashchange', () => { importFromLink(); });
-  $('pause').addEventListener('click', () => app.coordinator?.pause());
-  $('resume').addEventListener('click', () => app.coordinator?.resume());
+  $('pause').addEventListener('click', () => {
+    note('click-pause');
+    app.coordinator?.pause();
+  });
+  $('resume').addEventListener('click', () => {
+    note('click-resume');
+    app.coordinator?.resume();
+  });
+  const optionsChanged = () => { if (!app.busy) renderEta(); };
+  $('opt-games').addEventListener('input', optionsChanged);
+  $('opt-depth').addEventListener('change', optionsChanged);
+  $('remeasure').addEventListener('click', () => {
+    if (app.busy) return;
+    calError = null;
+    ensureCalibration(readOptions().depth, { force: true }).then(renderEta, renderEta);
+  });
   $('stop').addEventListener('click', () => {
+    note('click-stop', { during: fetchWorker ? 'download' : 'analysis' });
     if (fetchWorker) fetchWorker.postMessage({ type: 'stop' });
     else app.coordinator?.stop();
     $('stop').disabled = true;
@@ -433,9 +719,14 @@ function wire() {
 
 async function init() {
   try {
+    if (!globalThis.indexedDB) throw new Error('indexedDB is missing');
     db = await openDb();
   } catch (err) {
-    $('loading').textContent = `This browser does not allow storing data for this page (${err?.message ?? err}).`;
+    console.error(err);
+    const m = messageFor(classifyError(err, { where: 'storage' }));
+    note('message', { kind: m.kind, text: messageText(m) });
+    $('loading').textContent = messageText(m);
+    $('loading').className = 'loading error';
     return;
   }
   dataPanel = mountDataPanel({
@@ -449,10 +740,11 @@ async function init() {
   });
   wire();
   renderDefaults();
-  const [lastUser, lastSource, options, cliDoc] = await Promise.all([
-    getSetting(db, 'lastUser'), getSetting(db, 'lastSource'), loadOptions(), loadCliDoc(),
+  const [lastUser, lastSource, options, cliDoc, calibration] = await Promise.all([
+    getSetting(db, 'lastUser'), getSetting(db, 'lastSource'), loadOptions(), loadCliDoc(), getSetting(db, CALIBRATION_SETTING),
   ]);
   app.cliDoc = cliDoc;
+  calStore = calibration ?? null;
   $('name').value = lastUser ?? '';
   fillOptions(options);
   const link = await importFromLink();

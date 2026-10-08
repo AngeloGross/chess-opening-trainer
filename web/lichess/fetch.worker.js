@@ -11,11 +11,12 @@
 //   {type:'retry', kind, message, delayMs, ...counts}          rate limit or network error: one wait-and-retry
 //   {type:'done', ...counts}
 //   {type:'stopped', ...counts}
-//   {type:'error', kind, message, ...counts}       kind = LichessError kind, or 'internal'
+//   {type:'error', kind, message, status?, ...counts}  kind = LichessError kind, 'quota' (storage full) or 'internal'
 
 import { checkUser, streamGames, LichessError } from './client.js';
 import { download } from './download.js';
 import { countGames, openDb } from '../store/db.js';
+import { classifyError } from '../core/messages.js';
 
 /** @type {AbortController|null} */
 let controller = null;
@@ -45,8 +46,11 @@ async function start({ user, perfs, maxGames = null, since = null }) {
     post({ type: 'done', ...result });
   } catch (err) {
     if (signal.aborted) post({ type: 'stopped', ...last });
-    else if (err instanceof LichessError) post({ type: 'error', kind: err.kind, message: err.message, ...last });
-    else post({ type: 'error', kind: 'internal', message: String(err?.message ?? err), ...last });
+    else if (err instanceof LichessError) post({ type: 'error', kind: err.kind, message: err.message, status: err.status, ...last });
+    else {
+      const kind = classifyError(err, { online: self.navigator?.onLine !== false });
+      post({ type: 'error', kind: kind === 'quota' || kind === 'storage_unavailable' ? kind : 'internal', message: String(err?.message ?? err), ...last });
+    }
   } finally {
     controller = null;
   }

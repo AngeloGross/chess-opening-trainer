@@ -19,7 +19,8 @@
 // - MultiPV: eager (desktop) queues the MultiPV-5 search as soon as a game yields a mistake; lazy
 //   (mobile) only for the top `lazyTop` positions at each checkpoint. `topMoves()` searches on demand.
 // - Checkpoints: every 25 games or 10 s, `aggregate` over the stored results plus cached MultiPV rows
-//   (never a new search), written to `positions[userId]` in the exact positions.json shape.
+//   (never a new search), written to `positions[userId]` in the exact positions.json shape, plus
+//   `unchecked: true` on entries whose MultiPV search is not cached yet (slice 7, lazy MultiPV on open).
 
 import { aggregate } from '../core/aggregate.js';
 import { analyseGame } from '../core/analyse.js';
@@ -141,6 +142,8 @@ function generatedAt(ms) {
  * @property {number} checkpoints
  * @property {number} elapsedMs  wall time since start
  * @property {number|null} etaMs  remaining, from this run's rate; null until a game finished
+ * @property {number} gamesThisRun  games finished by this run (not resumed ones)
+ * @property {number} activeMs  wall time since start minus paused time
  */
 
 export class Coordinator {
@@ -177,6 +180,8 @@ export class Coordinator {
     this._inflight = new Map();
     /** @type {Map<string, Promise<void>>} fenKey -> queued MultiPV search */
     this._multipv = new Map();
+    /** @type {Set<string>} fenKeys whose MultiPV search finished in this session (even with no lines) */
+    this._multipvSearched = new Set();
     /** @type {Map<string, string>} mistake fenKey -> full FEN */
     this._mistakeFen = new Map();
     this._pendingEvals = new Map();
@@ -201,7 +206,7 @@ export class Coordinator {
     this.progress = {
       state: 'idle', engineId: null, runKey: null, gamesDone: 0, gamesTotal: 0, gamesResumed: 0, positions: 0,
       cacheHits: 0, engineSearches: 0, shared: 0, terminal: 0, multipvDone: 0, multipvTotal: 0, mistakes: 0,
-      checkpoints: 0, elapsedMs: 0, etaMs: null,
+      checkpoints: 0, elapsedMs: 0, etaMs: null, gamesThisRun: 0, activeMs: 0,
     };
   }
 
@@ -398,7 +403,9 @@ export class Coordinator {
     await this.init();
     const fields = fenOrKey.trim().split(/\s+/);
     const fen = fields.length >= 6 ? fenOrKey : (this._mistakeFen.get(fields.join(' ')) ?? `${fields.join(' ')} 0 1`);
-    return /** @type {Array<[string, number]>} */ ((await this._lines(fen, MULTIPV)).filter((l) => l[0] !== null));
+    const lines = await this._lines(fen, MULTIPV);
+    this._multipvSearched.add(fenKey(fen));
+    return /** @type {Array<[string, number]>} */ (lines.filter((l) => l[0] !== null));
   }
 
   /** Cached MultiPV lines only, never a search (aggregate's `topMoves` at a checkpoint). */
@@ -419,7 +426,7 @@ export class Coordinator {
     if (this._multipv.has(key) || this._stopped) return;
     this.progress.multipvTotal += 1;
     const job = this._lines(fen, MULTIPV).then(
-      () => { this.progress.multipvDone += 1; this._emit(); },
+      () => { this._multipvSearched.add(key); this.progress.multipvDone += 1; this._emit(); },
       (err) => {
         if (err instanceof StoppedError) return;
         this._fail(err);
@@ -530,7 +537,16 @@ export class Coordinator {
       const row = this.results.get(g.id);
       if (row && row.color !== null) pairs.push([g, { color: row.color, reached: row.reached, mistake: row.mistake }]);
     }
-    const entries = await aggregate(pairs, (fen) => this._cachedTop(fen), this.opts.threshold);
+    // Positions without a cached MultiPV search (lazy mode outside the top, or eager searches still queued)
+    // get `unchecked: true`: their accept window is only the single-PV best until analysis/alternatives.js
+    // (or a later checkpoint) fills it in.
+    const unchecked = new Set();
+    const entries = await aggregate(pairs, async (fen) => {
+      const top = await this._cachedTop(fen);
+      if (!top.length && !this._multipvSearched.has(fenKey(fen))) unchecked.add(fenKey(fen));
+      return top;
+    }, this.opts.threshold);
+    for (const e of entries) if (unchecked.has(fenKey(e.fen))) e.unchecked = true;
     if (queueLazy && this.opts.multipv === 'lazy') {
       for (const e of entries.slice(0, this.opts.lazyTop)) this._queueMultipv(e.fen);
     }
@@ -564,6 +580,8 @@ export class Coordinator {
     const active = p.elapsedMs - this._pausedMs - (this._paused ? now - this._pausedAt : 0);
     const left = p.gamesTotal - p.gamesDone;
     // Games carry their share of eager MultiPV; a lazy or final MultiPV tail is not modelled.
+    p.activeMs = Math.max(0, active);
+    p.gamesThisRun = this._doneThisRun;
     p.etaMs = this._doneThisRun ? Math.round((active / this._doneThisRun) * left) : (left ? null : 0);
     this.onProgress({ ...p });
   }

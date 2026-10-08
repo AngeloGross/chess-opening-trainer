@@ -380,3 +380,38 @@ export async function putPositions(db, user, doc) {
   tx.objectStore('positions').put(doc, userIdOf(user));
   await done(tx);
 }
+
+/**
+ * Read-modify-write of a user's positions document in one transaction, so a checkpoint written at the
+ * same time is never overwritten with an older copy. `change` gets the stored document (or undefined)
+ * and returns the new one, or undefined to leave it as it is.
+ * @param {IDBDatabase} db @param {string} user @param {(doc: any) => any} change
+ * @returns {Promise<any>} the stored document afterwards
+ */
+export async function updatePositions(db, user, change) {
+  const tx = db.transaction('positions', 'readwrite');
+  const store = tx.objectStore('positions');
+  const committed = done(tx);
+  const key = userIdOf(user);
+  let result;
+  store.get(key).onsuccess = (ev) => {
+    const doc = /** @type {IDBRequest} */ (ev.target).result;
+    result = doc;
+    let next;
+    try {
+      next = change(doc);
+    } catch (err) {
+      tx.abort();
+      committed.catch(() => {});
+      result = err;
+      return;
+    }
+    if (next !== undefined) {
+      store.put(next, key);
+      result = next;
+    }
+  };
+  await committed.catch((err) => { if (!(result instanceof Error)) throw err; });
+  if (result instanceof Error) throw result;
+  return result;
+}

@@ -26,6 +26,17 @@ the CLI exists, the start page offers it with one click ("Use analysis from the 
 Browser and CLI evals differ slightly (the browser uses Stockfish's small network), so borderline
 mistakes can differ between the two.
 
+Before the first run the page measures the device with a few engine searches at the chosen depth and
+shows the expected time ("About 12 min for 150 games at depth 12 on this device"); the estimate follows
+changes to the game count and depth, is kept per device and depth, and *Settings → Re-measure* repeats
+the test. During the run the time left comes from the real speed. On a phone where two engines are no
+faster than one, only one is used. Phones keep the screen on during the analysis where the browser
+supports it; keep the tab in front, because background tabs are slowed down or paused. On a phone only the
+top 30 positions get their alternative answers checked during the run; any other position is checked
+the first time it is opened ("Checking alternatives…", a few seconds) and the result is stored.
+If Lichess cannot be reached or asks to slow down, the page waits a minute with a visible countdown
+(Cancel stops it) and tries once more; already downloaded games are kept.
+
 ### Backups and moving to your phone
 
 The **Data** button (or "Load a backup or analysis file" on the start page) shows whether the browser

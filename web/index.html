@@ -41,6 +41,7 @@
       </div>
       <p id="start-error" class="error" role="alert" hidden></p>
       <p id="defaults" class="muted"></p>
+      <p id="eta" class="small" role="status" aria-live="polite"></p>
       <details id="settings">
         <summary>Settings</summary>
         <div class="settings-grid">
@@ -59,6 +60,8 @@
         </div>
         <p class="muted small">Blitz, rapid and classical games; your first 15 moves; a loss of 20 cp or more counts
           as a mistake. Your games and the analysis stay in this browser.</p>
+        <p class="muted small"><span id="calibration-info"></span>
+          <button id="remeasure" type="button" class="link" hidden>Re-measure</button></p>
       </details>
       <p class="back-row"><button id="back" type="button" hidden>&larr; Back to training</button></p>
     </form>
@@ -128,6 +131,7 @@
     <p id="phase" role="status" aria-live="polite"></p>
     <progress id="progress-bar" max="1" value="0"></progress>
     <p id="progress-detail" class="muted small"></p>
+    <p id="keep-awake" class="small note" hidden></p>
     <div class="actions">
       <button id="pause" type="button" hidden>Pause</button>
       <button id="resume" type="button" hidden>Resume</button>
@@ -168,6 +172,7 @@
         <h2 id="pos-title">&nbsp;</h2>
         <p id="pos-meta" class="muted"></p>
         <p id="prompt"></p>
+        <p id="alt-status" class="small note" role="status" aria-live="polite" hidden></p>
         <div id="feedback" role="status" aria-live="polite"></div>
         <div class="actions">
           <button id="retry" type="button" hidden>Retry</button>

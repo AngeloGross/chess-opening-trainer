@@ -5,24 +5,30 @@
 const BASE = 'https://lichess.org';
 
 export class LichessError extends Error {
-  /** @param {string} message @param {'not_found'|'closed'|'rate_limited'|'network'|'http'} kind */
-  constructor(message, kind) {
+  /**
+   * @param {string} message
+   * @param {'not_found'|'closed'|'rate_limited'|'network'|'offline'|'http'} kind
+   * @param {{status?: number}} [extra]
+   */
+  constructor(message, kind, { status } = {}) {
     super(message);
     this.name = 'LichessError';
     this.kind = kind;
+    this.status = status;
   }
 }
 
 /** Map a fetch() rejection to a LichessError. A 429 without CORS headers also lands here (design §3.1). */
 function networkError(err) {
   if (err?.name === 'AbortError') throw err;
+  if (globalThis.navigator?.onLine === false) throw new LichessError(`This device is offline (${err?.message ?? err}).`, 'offline');
   throw new LichessError(`Could not reach Lichess (${err?.message ?? err}). Wait a minute and retry.`, 'network');
 }
 
 function httpError(resp, user) {
   if (resp.status === 404) return new LichessError(`Lichess user "${user}" not found.`, 'not_found');
   if (resp.status === 429) return new LichessError('Lichess rate limit hit. Wait a minute and retry.', 'rate_limited');
-  return new LichessError(`Lichess answered HTTP ${resp.status}.`, 'http');
+  return new LichessError(`Lichess answered HTTP ${resp.status}.`, 'http', { status: resp.status });
 }
 
 /**
