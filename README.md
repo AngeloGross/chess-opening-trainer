@@ -159,3 +159,8 @@ port pass again (`--check` only reports stale fixtures).
 
 GPL-3.0-or-later, see [LICENSE](LICENSE). The project builds on python-chess (GPL-3.0) and
 Stockfish (GPL-3.0); chessground and chess.js are loaded from jsDelivr under their own licenses.
+
+The browser port vendors the Stockfish.js 19 "lite single-threaded" WASM build (npm
+`stockfish@19.0.0`, GPL-3.0) unchanged in `web/vendor/stockfish@19.0.0/`, with its license
+(`Copying.txt`) and links to the corresponding source (`SOURCE.txt`). `web/spike/engine.html`
+(served by `uv run trainer serve`) runs it in a pool of workers and benchmarks it.

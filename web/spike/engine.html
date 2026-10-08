@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Engine Spike</title>
+  <style>
+    :root { --bg: #fff; --fg: #1d1d1f; --muted: #6b6b70; --ok: #1a7f37; --err: #c62828; --line: #e3e3e6; --field: #f5f5f7; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1b1b1d; --fg: #ececf0; --muted: #a0a0a8; --ok: #5bd17a; --err: #ff7a7a; --line: #333338; --field: #26262a; } }
+    body { margin: 0; padding: 16px; font: 15px/1.45 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+    main { max-width: 760px; margin: 0 auto; }
+    form { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; align-items: end; }
+    label { display: flex; flex-direction: column; font-size: 13px; color: var(--muted); }
+    label.wide { flex: 1 1 100%; }
+    input, textarea, button { font: inherit; padding: 6px 10px; color: var(--fg); background: var(--field); border: 1px solid var(--line); border-radius: 4px; }
+    textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 13px; resize: vertical; }
+    input[type=number] { width: 5em; }
+    button { cursor: pointer; } button:disabled { opacity: .5; cursor: default; }
+    #status { color: var(--muted); } #status.ok { color: var(--ok); } #status.err { color: var(--err); }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 8px 0; }
+    dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
+    table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 500; font-size: 13px; } td.num, th.num { text-align: right; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Engine spike</h1>
+  <p>Design slice 3: Stockfish 19 lite (single-threaded WASM) in a pool of workers, in this browser.</p>
+  <form id="form">
+    <label class="wide">FEN <textarea id="fen" rows="2" spellcheck="false"></textarea></label>
+    <label>Depth <input id="depth" type="number" min="1" max="30" value="14"></label>
+    <label>MultiPV <input id="multipv" type="number" min="1" max="20" value="5"></label>
+    <label>Workers <input id="workers" type="number" min="1" max="16"></label>
+    <button id="run">Analyse</button>
+    <label>Positions <input id="n" type="number" min="1" max="400" value="20"></label>
+    <button id="bench" type="button">Benchmark</button>
+    <button id="stop" type="button" disabled>Stop</button>
+  </form>
+  <p id="status" role="status">Starting engines…</p>
+  <dl>
+    <dt>Engine</dt><dd id="name">–</dd>
+    <dt>Workers</dt><dd id="count">–</dd>
+    <dt>Start-up</dt><dd id="startup">–</dd>
+  </dl>
+  <table id="lines" hidden>
+    <thead><tr><th>#</th><th>Move</th><th>UCI</th><th class="num">cp (side to move)</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <dl id="stats" hidden>
+    <dt>Nodes</dt><dd id="nodes"></dd>
+    <dt>Search time</dt><dd id="time"></dd>
+  </dl>
+  <dl id="benchOut" hidden>
+    <dt>Benchmark</dt><dd id="benchText"></dd>
+  </dl>
+  <pre id="summary"></pre>
+</main>
+<script type="module">
+import { Chess } from '../vendor/chess.js@1.4.0/dist/esm/chess.js';
+import { EnginePool, defaultWorkerCount } from '../engine/pool.js';
+
+// A real position from spec/fixtures/mistake-found.json (Ruy Lopez, 5...Be7, White to move).
+const DEFAULT_FEN = 'r1bqk2r/1pppbppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 4 6';
+// Benchmark fallback when web/positions.json is absent: distinct positions from spec/fixtures.
+const FIXTURE_FENS = [
+  'rnbq1rk1/pppp1ppp/4pn2/8/2PP4/P1b5/1PQ1PPPP/R1B1KBNR w KQ - 0 1',
+  'rnbq1rk1/pppp1ppp/4pn2/8/2PP4/P1Q5/1P2PPPP/R1B1KBNR b KQ - 0 1',
+  'rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 1',
+  'rnbqkb1r/ppp1pppp/3P1n2/8/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+  'rnbqk1nr/ppp1ppbp/6p1/3pP3/8/2K5/PPPP1PPP/RNBQ1BNR w kq - 0 1',
+  'rnbqkbnr/ppp1pppp/8/8/3pP3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq e3 0 1',
+  'rnbqkbnr/ppp1pppp/8/8/8/2N1pN2/PPPP1PPP/R1BQKB1R w KQkq - 0 1',
+  'r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1',
+  'r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1',
+  'r1bqk2r/1pppbppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 1',
+  'r1bqk2r/1pppbppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQR1K1 b kq - 0 1',
+  'r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1',
+  'r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R b KQkq - 0 1',
+  'r1bqkbnr/pppp1ppp/8/4p3/2BnP3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1',
+  'r1bqkbnr/pppp1ppp/8/4p3/2BnP3/2N2N2/PPPP1PPP/R1BQK2R b KQkq - 0 1',
+  'rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 0 1',
+  'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1',
+  'rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1',
+  'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1',
+  'rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1',
+];
+
+const $ = (id) => document.getElementById(id);
+const qs = new URLSearchParams(location.search);
+let pool = null;
+let poolSize = 0;
+const summary = {};
+
+function status(text, cls = '') { const el = $('status'); el.textContent = text; el.className = cls; }
+function busy(on) { $('run').disabled = on; $('bench').disabled = on; $('stop').disabled = !on; }
+function publish() { $('summary').textContent = JSON.stringify(summary, null, 1); }
+
+async function getPool() {
+  const size = Math.max(1, Number($('workers').value) || defaultWorkerCount());
+  if (pool && size === poolSize) return pool;
+  pool?.terminate();
+  poolSize = size;
+  const t0 = performance.now();
+  pool = new EnginePool({ size });
+  status(`Starting ${size} engine worker(s)…`);
+  const name = await pool.ready();
+  const startupMs = Math.round(performance.now() - t0);
+  $('name').textContent = name;
+  $('count').textContent = `${pool.workers} (hardwareConcurrency ${navigator.hardwareConcurrency ?? '?'}, default ${defaultWorkerCount()})`;
+  $('startup').textContent = `${startupMs} ms until all workers answered readyok`;
+  Object.assign(summary, { engine: name, workers: pool.workers, hardwareConcurrency: navigator.hardwareConcurrency ?? null, startupMs });
+  return pool;
+}
+
+/** UCI move → SAN in the given position (null move → "–"). */
+function san(fen, uci) {
+  if (!uci) return '–';
+  try {
+    return new Chess(fen).move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] }).san;
+  } catch {
+    return `${uci}?`;
+  }
+}
+
+async function analyse() {
+  const fen = $('fen').value.trim();
+  const depth = Number($('depth').value) || 14;
+  const multipv = Number($('multipv').value) || 5;
+  const p = await getPool();
+  status(`Analysing at depth ${depth}, MultiPV ${multipv}…`);
+  const t0 = performance.now();
+  const res = await p.analyse(fen, depth, multipv);
+  const wallMs = Math.round(performance.now() - t0);
+  const rows = res.lines.map(([uci, cp], i) => {
+    const tr = document.createElement('tr');
+    for (const [text, cls] of [[i + 1], [san(fen, uci)], [uci ?? '(none)'], [cp > 0 ? `+${cp}` : String(cp), 'num']]) {
+      const td = document.createElement('td');
+      td.textContent = text;
+      if (cls) td.className = cls;
+      tr.append(td);
+    }
+    return tr;
+  });
+  $('lines').tBodies[0].replaceChildren(...rows);
+  $('lines').hidden = false;
+  $('nodes').textContent = res.nodes.toLocaleString('en');
+  $('time').textContent = `${res.timeMs} ms in the worker, ${wallMs} ms on the page` +
+    (res.timeMs ? ` (${Math.round(res.nodes / res.timeMs)} kn/s)` : '');
+  $('stats').hidden = false;
+  summary.analysis = { fen, depth, multipv, lines: res.lines.map(([u, cp]) => [u, san(fen, u), cp]), nodes: res.nodes, timeMs: res.timeMs, wallMs };
+  publish();
+  status(`Done: depth ${depth}, MultiPV ${multipv}, ${res.timeMs} ms.`, 'ok');
+}
+
+async function benchmarkFens(n) {
+  try {
+    const resp = await fetch('../positions.json', { cache: 'no-store' });
+    if (resp.ok) {
+      const doc = await resp.json();
+      const fens = [...new Set((doc.positions ?? []).map((p) => p.fen))];
+      if (fens.length) return { source: `web/positions.json (${fens.length} positions)`, fens: fens.slice(0, n) };
+    }
+  } catch { /* fall back */ }
+  return { source: 'spec/fixtures (embedded)', fens: FIXTURE_FENS.slice(0, n) };
+}
+
+async function benchmark() {
+  const n = Number($('n').value) || 20;
+  const depth = Number($('depth').value) || 14;
+  const p = await getPool();
+  const { source, fens } = await benchmarkFens(n);
+  status(`Benchmark: ${fens.length} positions at depth ${depth} (MultiPV 1) on ${p.workers} worker(s)…`);
+  let done = 0;
+  const t0 = performance.now();
+  const results = await Promise.all(fens.map((fen) => p.analyse(fen, depth, 1).then((r) => {
+    done++;
+    status(`Benchmark: ${done} / ${fens.length}…`);
+    return r;
+  })));
+  const totalMs = Math.round(performance.now() - t0);
+  const searchMs = results.map((r) => r.timeMs).sort((a, b) => a - b);
+  const meanMs = Math.round(searchMs.reduce((a, b) => a + b, 0) / searchMs.length);
+  const medianMs = searchMs[Math.floor(searchMs.length / 2)];
+  const nodes = results.reduce((a, r) => a + r.nodes, 0);
+  const perSec = fens.length / (totalMs / 1000);
+  $('benchText').textContent = `${fens.length} positions from ${source}, depth ${depth}, ${p.workers} worker(s): ` +
+    `${totalMs} ms total, ${perSec.toFixed(2)} positions/s; per search mean ${meanMs} ms, median ${medianMs} ms; ` +
+    `${Math.round(nodes / searchMs.reduce((a, b) => a + b, 0))} kn/s per worker.`;
+  $('benchOut').hidden = false;
+  summary.benchmark = { source, positions: fens.length, depth, workers: p.workers, totalMs, positionsPerSec: Number(perSec.toFixed(2)), meanSearchMs: meanMs, medianSearchMs: medianMs, nodes };
+  publish();
+  status(`Benchmark done: ${perSec.toFixed(2)} positions/s.`, 'ok');
+}
+
+async function guarded(fn) {
+  busy(true);
+  try {
+    await fn();
+    return true;
+  } catch (err) {
+    status(err.stopped ? 'Stopped.' : `Error: ${err.message}`, err.stopped ? '' : 'err');
+    summary.error = err.message;
+    publish();
+    return false;
+  } finally {
+    busy(false);
+  }
+}
+
+$('form').addEventListener('submit', (ev) => { ev.preventDefault(); guarded(analyse); });
+$('bench').addEventListener('click', () => guarded(benchmark));
+$('stop').addEventListener('click', () => pool?.stop());
+
+// ?fen=…&depth=…&multipv=…&workers=…&n=…; ?auto=1 runs the analysis, then the benchmark (headless check).
+$('fen').value = qs.get('fen') ?? DEFAULT_FEN;
+for (const id of ['depth', 'multipv', 'n']) if (qs.get(id)) $(id).value = qs.get(id);
+$('workers').value = qs.get('workers') ?? defaultWorkerCount();
+document.body.dataset.state = 'idle';
+if (qs.get('auto')) {
+  document.body.dataset.state = 'running';
+  const ok = (await guarded(analyse)) && (await guarded(benchmark));
+  document.body.dataset.state = ok ? 'done' : 'error';
+} else {
+  guarded(getPool).then((ok) => ok && status('Ready.', 'ok'));
+}
+</script>
+</body>
+</html>

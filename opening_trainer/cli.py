@@ -177,10 +177,16 @@ class _Server(http.server.ThreadingHTTPServer):
         super().server_bind()
 
 
+class _Handler(http.server.SimpleHTTPRequestHandler):
+    """Static files, with .wasm pinned to application/wasm: the Windows registry can override mimetypes."""
+
+    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map, ".wasm": "application/wasm"}
+
+
 def cmd_serve(args: argparse.Namespace) -> None:
     if not POSITIONS_PATH.exists():
         print("Note: web/positions.json is missing. Run `uv run trainer update` first.")
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(WEB_DIR))
+    handler = functools.partial(_Handler, directory=str(WEB_DIR))
     with _Server(("127.0.0.1", args.port), handler) as server:
         url = f"http://127.0.0.1:{args.port}/"
         print(f"Serving {WEB_DIR} at {url} (Ctrl+C to stop)")

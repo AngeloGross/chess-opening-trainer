@@ -1,0 +1,21 @@
+Stockfish.js 19 "lite single-threaded" build, vendored unchanged from the npm package.
+
+Package:    stockfish@19.0.0 (npm), sha512-jDyYLbqNpboQcMs5HodTHI2CrKL74zkQWb1+sgoNXw5HI6avTblW4G0X7afFt3BBOc6VbTSkOV64EUxm/DWSpg==
+Obtained:   npm pack stockfish@19.0.0, files copied from package/bin/ and package/Copying.txt
+License:    GPL-3.0 (Copying.txt in this folder)
+Engine:     UCI "id name Stockfish 19 Lite WASM"; NNUE net nn-61e7af4bb97d embedded in the .wasm
+
+Corresponding source:
+  stockfish.js (build scripts, patches):  https://github.com/nmrugg/stockfish.js/tree/v19.0.0
+  release files:                          https://github.com/nmrugg/stockfish.js/releases/tag/v19.0.0
+  Stockfish engine:                       https://github.com/official-stockfish/Stockfish/tree/sf_19
+  lite net:                               https://tests.stockfishchess.org/nns?network_name=nn-61e7af4bb97d
+
+Files (bytes, sha256):
+  stockfish-19-lite-single.js     21415    d3344124ab067fb0b90ee77873bb8e9fbf5fc01bc525fe714b0f942581e889e6
+  stockfish-19-lite-single.wasm   1787571  57ac2d72312aba346760e3f173f687a8c211208e97a87268436f7f0e10bb5387
+  Copying.txt                     35821    0b383d5a63da644f628d99c33976ea6487ed89aaa59f0b3257992deac1171e6b
+
+How it is loaded (see web/engine/engine.worker.js): the .js is a classic script that, inside a
+worker, installs its own onmessage, answers with postMessage(line), and fetches the .wasm from the
+URL in the worker's location.hash (falling back to <worker script>.wasm).
