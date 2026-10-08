@@ -85,7 +85,7 @@ def aggregate(
         # Best move and accept window come from the same MultiPV search.
         top = top_moves(b.fen)
         best = top[0][0] if top else b.best
-        # Depth noise can make the top line one of his "mistakes"; then fall back so the quiz has an answer.
+        # Depth noise can make the top line one of the player's "mistakes"; then fall back so the quiz has an answer.
         acceptable = acceptable_moves(top, wrong, threshold) or [b.best if b.best not in wrong else best]
         if best not in acceptable:
             best = acceptable[0]

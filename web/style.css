@@ -106,3 +106,5 @@ button.primary { background: var(--accent); color: var(--accent-text); border-co
   .board-panel { order: -1; }
   #position-list { max-height: 40vh; }
 }
+
+h1 #player { font-size: 0.55em; font-weight: normal; }

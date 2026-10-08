@@ -1,6 +1,6 @@
 [project]
 name = "opening-trainer"
-version = "0.1.0"
+version = "0.2.0"
 description = "Find and drill the opening positions where you lose eval in your own Lichess games."
 readme = "README.md"
 requires-python = ">=3.11"

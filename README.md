@@ -1,25 +1,72 @@
 # Opening Trainer
 
-Finds the opening positions where you most often lose eval in your own Lichess games
-(Lichess user `AngelOgro` by default), then lets you drill them on a board in the browser.
+Finds the opening positions where you most often lose eval in **your own Lichess games**,
+then lets you drill them on a board in the browser: "find the best move" in exactly the
+positions where you keep going wrong.
 
 A local Python CLI downloads your games, runs Stockfish over your first moves, records the first
 inaccuracy of each game, groups those by position and writes `web/positions.json`. A static page
 (chessground + chess.js from jsDelivr) quizzes you on them, ranked by errors × average loss.
+Everything runs on your own computer; no Lichess login is needed.
 
-## Quick start
+## Getting started
 
-Requires [uv](https://docs.astral.sh/uv/). Works on Windows, Linux and macOS (see [Stockfish](#stockfish)).
+### 1. Install the tools (once)
+
+You need **git** and **[uv](https://docs.astral.sh/uv/)** (uv installs the right Python by itself).
+
+| System | git | uv |
+|---|---|---|
+| Windows (PowerShell) | `winget install Git.Git` | `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 \| iex"` |
+| Ubuntu/Debian | `sudo apt install git` | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| macOS | `xcode-select --install` | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+
+Open a new terminal afterwards so `uv` is found.
+
+### 2. Get the trainer
 
 ```sh
-uv run trainer setup     # download Stockfish for this platform into tools/stockfish/
-uv run trainer update    # fetch games + analyse -> web/positions.json
-uv run trainer serve     # open the trainer at http://127.0.0.1:8000/
+git clone https://github.com/AngeloGross/chess-opening-trainer.git
+cd chess-opening-trainer
+uv run trainer setup                   # downloads Stockfish for your system into tools/stockfish/
 ```
 
-The first `update` analyses the 2,000 most recent games at depth 18, which takes a while.
-It can be interrupted at any time: downloaded games and engine results are kept, and a re-run
-continues where it stopped.
+### 3. Analyse your games
+
+```sh
+uv run trainer update --user YourLichessName --max-games 300
+```
+
+Your Lichess name is remembered, so later runs only need `uv run trainer update`.
+Alternatively set the `LICHESS_USER` environment variable.
+
+How long it takes depends on your CPU: roughly an hour for 500 games at the default depth 18.
+Start small (`--max-games 300`, or `--depth 14` for a quicker, slightly less precise run) and
+raise it later; the analysis can be stopped with Ctrl+C at any time and continues where it
+stopped, because downloaded games and engine results are kept. Re-runs only analyse new games.
+
+### 4. Train
+
+```sh
+uv run trainer serve                   # opens http://127.0.0.1:8000/ in your browser
+```
+
+Play the move you think is best. A move counts as correct if it is within the mistake threshold
+(20 cp) of the engine's best move. "Reveal" shows the answer and the move you usually played;
+every position links to the Lichess analysis board and to the games it came from.
+
+### Several people on one computer
+
+Games are stored per user, so switching with `--user OtherName` is fine, but `web/positions.json`
+always holds the positions of the last analysed user. Re-run `uv run trainer analyse --user Name`
+to switch back (fast, everything is cached).
+
+### Troubleshooting
+
+- **"Stockfish not found"**: run `uv run trainer setup`, or see [Stockfish](#stockfish) below.
+- **"Lichess user ... not found"**: check the spelling of `--user` (it's your lichess.org name).
+- **"Lichess rate limit hit"**: wait a minute, then run the same command again.
+- **Port 8000 in use**: `uv run trainer serve --port 8001`.
 
 ## Stockfish
 
@@ -64,7 +111,7 @@ Check it works: `printf 'uci\nquit\n' | tools/stockfish/stockfish` should print 
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--user` | `AngelOgro` | Lichess user |
+| `--user` | remembered from the last run | your Lichess user name (or `$LICHESS_USER`) |
 | `--perf` | `blitz,rapid,classical` | perf types (rated and casual) |
 | `--max-games N` | `2000` | most recent N games |
 | `--all` | off | all games (ignores `--max-games`) |
@@ -88,6 +135,7 @@ the threshold of it, minus the moves you were marked wrong for.
 
 Everything generated is git-ignored:
 
+- `data/settings.json` - remembered Lichess user
 - `data/games-<user>.ndjson` - downloaded games
 - `data/fetch-state-<user>.json` - back-fill cursor (oldest/newest game seen, incl. skipped ones)
 - `data/evals.sqlite` - engine cache, keyed by engine version, position, depth and MultiPV

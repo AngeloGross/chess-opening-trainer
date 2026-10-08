@@ -17,10 +17,10 @@ from . import WEB_DIR
 from .aggregate import POSITIONS_PATH, aggregate, write_positions
 from .analyse import analyse_game
 from .engine import Engine, EngineAnalysisError, EngineMissingError
-from .fetch import FetchError, fetch, games_path, is_supported, read_games
+from .fetch import FetchError, check_user, fetch, games_path, is_supported, read_games
+from .settings import UserNotSetError, remember_user, resolve_user
 from .setup_engine import SetupError, find_engine, install, missing_engine_message
 
-DEFAULT_USER = "AngelOgro"
 DEFAULT_PERFS = "blitz,rapid,classical"
 
 
@@ -79,6 +79,9 @@ def cmd_setup(args: argparse.Namespace) -> None:
 
 
 def cmd_fetch(args: argparse.Namespace) -> None:
+    args.user = check_user(args.user)
+    remember_user(args.user)
+    print(f"Lichess user: {args.user}")
     progress = Progress(every=100)
     added = fetch(
         args.user,
@@ -190,13 +193,13 @@ def cmd_serve(args: argparse.Namespace) -> None:
 
 
 def _add_game_options(p: argparse.ArgumentParser, analysis: bool) -> None:
-    p.add_argument("--user", default=DEFAULT_USER, help="Lichess user name (default: %(default)s)")
+    p.add_argument("--user", help="your Lichess user name; remembered after the first run (or set $LICHESS_USER)")
     p.add_argument("--perf", default=DEFAULT_PERFS, help="comma-separated perf types (default: %(default)s)")
     p.add_argument("--max-games", type=_positive_int, default=2000, help="most recent N games (default: %(default)s)")
     p.add_argument("--all", action="store_true", help="use all games, ignoring --max-games")
     p.add_argument("--since", type=_date_ms, help="only games on or after YYYY-MM-DD")
     if analysis:
-        p.add_argument("--max-moves", type=_positive_int, default=15, help="scan his first N moves (default: %(default)s)")
+        p.add_argument("--max-moves", type=_positive_int, default=15, help="scan your first N moves (default: %(default)s)")
         p.add_argument("--threshold", type=_positive_int, default=20, help="mistake threshold in cp (default: %(default)s)")
         p.add_argument("--depth", type=_positive_int, default=18, help="Stockfish depth (default: %(default)s)")
 
@@ -231,8 +234,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        if hasattr(args, "user"):
+            args.user = resolve_user(args.user)
         args.func(args)
-    except (EngineMissingError, EngineAnalysisError, FetchError, SetupError) as exc:
+    except (EngineMissingError, EngineAnalysisError, FetchError, SetupError, UserNotSetError) as exc:
         print(f"\nError: {exc}", file=sys.stderr)
         return 1
     except (chess.engine.EngineError, chess.engine.EngineTerminatedError) as exc:

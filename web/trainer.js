@@ -284,9 +284,11 @@ async function init() {
   try {
     const resp = await fetch('positions.json', { cache: 'no-store' });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    positions = (await resp.json()).positions || [];
+    const doc = await resp.json();
+    positions = doc.positions || [];
+    if (doc.user) $('player').textContent = `for ${doc.user}`;
   } catch (err) {
-    $('summary').textContent = `Could not load positions.json (${err.message}). Run \`uv run trainer update\` first.`;
+    $('summary').textContent = `Could not load positions.json (${err.message}). Run \`uv run trainer update --user YourLichessName\` first.`;
     return;
   }
 

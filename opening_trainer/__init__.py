@@ -7,4 +7,5 @@ DATA_DIR = PROJECT_ROOT / "data"
 WEB_DIR = PROJECT_ROOT / "web"
 TOOLS_DIR = PROJECT_ROOT / "tools"
 
-USER_AGENT = "opening-trainer/0.1 (lichess: AngelOgro)"
+# Lichess asks API clients to identify themselves; without a User-Agent the game export returns 404.
+USER_AGENT = "opening-trainer/0.2 (+https://github.com/AngeloGross/chess-opening-trainer)"

@@ -36,7 +36,7 @@ class Mistake:
 @dataclass
 class GameResult:
     color: chess.Color
-    reached: list[str] = field(default_factory=list)  # FEN keys where it was his move
+    reached: list[str] = field(default_factory=list)  # FEN keys where it was the player's move
     mistake: Mistake | None = None
 
 

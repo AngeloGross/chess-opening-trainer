@@ -17,6 +17,7 @@ import requests
 from . import DATA_DIR, USER_AGENT
 
 API_URL = "https://lichess.org/api/games/user/{user}"
+USER_URL = "https://lichess.org/api/user/{user}"
 
 
 class FetchError(RuntimeError):
@@ -143,6 +144,26 @@ def backfill_params(state: StoreState, cursor: Cursor, max_games: int | None, si
     if since_ms is not None:
         params["since"] = since_ms
     return params
+
+
+def check_user(user: str) -> str:
+    """The user's canonical Lichess name; FetchError if the account does not exist or is closed."""
+    try:
+        resp = requests.get(USER_URL.format(user=user), headers={"User-Agent": USER_AGENT}, timeout=30)
+    except requests.RequestException as exc:
+        raise FetchError(f"Could not reach Lichess: {exc}") from exc
+    if resp.status_code == 404:
+        raise FetchError(f"Lichess user {user!r} not found. Check the spelling of --user.")
+    if resp.status_code == 429:
+        raise FetchError("Lichess rate limit hit (HTTP 429). Wait a minute and re-run.")
+    try:
+        resp.raise_for_status()
+        info = resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise FetchError(f"Unexpected answer from Lichess for user {user!r}: {exc}") from exc
+    if info.get("disabled") or info.get("closed"):
+        raise FetchError(f"Lichess account {user!r} is closed.")
+    return info.get("username") or user
 
 
 def _stream(user: str, params: dict) -> Iterator[dict]:
