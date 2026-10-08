@@ -3,6 +3,8 @@ name = "opening-trainer"
 version = "0.2.0"
 description = "Find and drill the opening positions where you lose eval in your own Lichess games."
 readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "chess>=1.11",

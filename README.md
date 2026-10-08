@@ -147,3 +147,8 @@ Everything generated is git-ignored:
 ```sh
 uv run pytest
 ```
+
+## License
+
+GPL-3.0-or-later, see [LICENSE](LICENSE). The project builds on python-chess (GPL-3.0) and
+Stockfish (GPL-3.0); chessground and chess.js are loaded from jsDelivr under their own licenses.
