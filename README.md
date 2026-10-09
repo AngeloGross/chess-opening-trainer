@@ -12,7 +12,9 @@ Everything runs on your own computer; no Lichess login is needed.
 ## Use it in the browser
 
 The page can also do the whole job itself: download, Stockfish analysis (a WebAssembly build) and
-training all run in the browser, so nothing needs to be installed beyond serving the `web/` folder.
+training all run in the browser. **Open <https://angelogross.github.io/chess-opening-trainer/>**;
+nothing to install. Every push to `main` that touches `web/` runs the JS tests and republishes the
+site (`.github/workflows/pages.yml`). To run it locally instead, serve the `web/` folder:
 
 ```sh
 uv run trainer serve                   # or any static file server for web/, e.g. python -m http.server -d web

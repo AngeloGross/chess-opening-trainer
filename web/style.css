@@ -41,6 +41,7 @@ h1 { font-size: 1.3rem; margin: 0; }
 h2 { font-size: 1.05rem; margin: 0 0 4px; }
 .muted { color: var(--muted); }
 a { color: var(--accent); }
+.site-footer { margin: 24px 16px 16px; padding-top: 8px; border-top: 1px solid var(--border); }
 
 main {
   display: grid;
