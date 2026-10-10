@@ -104,6 +104,17 @@ export class SearchCollector {
     }
     return out;
   }
+
+  /**
+   * The principal variation of each line of `lines()`, same order (UCI moves, first = the line's move);
+   * `[[]]` for the no-move result.
+   * @returns {string[][]}
+   */
+  pvs() {
+    const out = [...this.best.values()].sort((a, b) => a.multipv - b.multipv).map((info) => info.pv);
+    if (out.length === 0 && this.bestmove && this.bestmove.move === null && this.scoreOnly) return [[]];
+    return out;
+  }
 }
 
 /**

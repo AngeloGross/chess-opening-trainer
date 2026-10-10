@@ -28,7 +28,9 @@ sys.path.insert(0, str(ROOT))
 
 from helpers import key_after as key, run_fixture  # noqa: E402
 
-from opening_trainer.book import BOOK_PATH, book_document  # noqa: E402
+import chess  # noqa: E402
+
+from opening_trainer.book import BOOK_PATH, SOURCE_DIR, SOURCE_FILES, book_document, settled_material  # noqa: E402
 from opening_trainer.engine import MATE_CP  # noqa: E402
 
 USER = "AngelOgro"
@@ -481,6 +483,31 @@ def round1_golden() -> dict:
     }
 
 
+# Positions with captures on the board that a plain material count gets wrong, besides opening lines.
+EXTRA_MATERIAL_FENS = [
+    "rnbqkbnr/ppp2ppp/8/3pp3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq d6 0 3",  # exchanges in the centre
+    "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",  # en passant capture
+    "1r2k3/2P5/8/8/8/8/8/4K3 w - - 0 1",  # capture with promotion
+    "4k3/8/8/8/8/8/5q2/4K2R w K - 0 1",  # a queen that can be taken by the king
+    "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",  # mate on the board
+]
+
+
+def settled_material_golden() -> dict:
+    """book.settled_material for every position of every 25th opening line, plus EXTRA_MATERIAL_FENS."""
+    fens: dict[str, None] = dict.fromkeys(EXTRA_MATERIAL_FENS)
+    for name in SOURCE_FILES:
+        for line in (SOURCE_DIR / name).read_text(encoding="utf-8").splitlines()[1::25]:
+            board = chess.Board()
+            for san in [t for t in line.split("\t")[2].split() if not t.rstrip(".").isdigit()]:
+                board.push_san(san)
+                fens[board.fen()] = None
+    return {
+        "about": "opening_trainer/book.py settled_material (White minus Black); regenerate with tools/make_fixture.py",
+        "cases": [[fen, settled_material(chess.Board(fen))] for fen in fens],
+    }
+
+
 def dump(doc) -> str:
     return json.dumps(doc, indent=1, ensure_ascii=False) + "\n"
 
@@ -504,6 +531,7 @@ def main() -> int:
             fx["expected"] = run_fixture(fx)
             outputs[path] = dump(fx)
     outputs[GOLDEN / "round1.json"] = dump(round1_golden())
+    outputs[GOLDEN / "settled-material.json"] = json.dumps(settled_material_golden(), indent=0, ensure_ascii=False) + "\n"
     outputs[BOOK_PATH] = json.dumps(book_document(), indent=0, ensure_ascii=False) + "\n"
 
     stale = [p for p, text in outputs.items() if not p.is_file() or p.read_text(encoding="utf-8") != text]
@@ -515,7 +543,7 @@ def main() -> int:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(outputs[p], encoding="utf-8", newline="\n")
         print(f"wrote {p.relative_to(ROOT)}")
-    print(f"{len(outputs) - 2} fixtures, {len(stale)} written")
+    print(f"{len(outputs) - 3} fixtures, {len(stale)} written")
     return 0
 
 

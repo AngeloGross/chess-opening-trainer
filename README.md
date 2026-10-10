@@ -105,6 +105,12 @@ Play the move you think is best. A move counts as correct if it is within the mi
 (20 cp) of the engine's best move. "Reveal" shows the answer and the move you usually played;
 every position links to the Lichess analysis board and to the games it came from.
 
+Once a position is solved or revealed, the engine's eval appears under it ("Engine: +1.0 for you ·
+material equal"); it is not shown before, as it would hint that there is something to find. From +0.8
+without extra material, "Why am I better?" tells what kind of advantage it is: the engine also looks at
+the position as if you passed. If you would keep most of the advantage, your position itself is better;
+otherwise the advantage is in your next move. It also says when best play wins material.
+
 ### Testing on your phone
 
 `uv run trainer serve --host 0.0.0.0` makes the pages reachable from other devices on the same

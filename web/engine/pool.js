@@ -79,7 +79,7 @@ export function terminalLines(fen) {
 
 /**
  * @typedef {[string | null, number]} EvalLine
- * @typedef {{lines: EvalLine[], nodes: number, timeMs: number}} Analysis
+ * @typedef {{lines: EvalLine[], pvs: string[][], nodes: number, timeMs: number}} Analysis  pvs: one PV per line (UCI)
  */
 
 export class EnginePool {
@@ -146,7 +146,7 @@ export class EnginePool {
     const job = slot.job;
     if (!job || job.id !== msg.id) return; // answer to a job that was already given up
     slot.job = null;
-    if (msg.type === 'result') job.resolve({ lines: msg.lines, nodes: msg.nodes, timeMs: msg.timeMs });
+    if (msg.type === 'result') job.resolve({ lines: msg.lines, pvs: msg.pvs ?? msg.lines.map(() => []), nodes: msg.nodes, timeMs: msg.timeMs });
     else job.reject(new EngineAnalysisError(msg.message, { stopped: !!msg.stopped }));
     this._dispatch();
   }
@@ -177,7 +177,8 @@ export class EnginePool {
   }
 
   /**
-   * One search: `{lines, nodes, timeMs}`, lines `[[uci|null, cp], ...]` best first, cp for the side to move.
+   * One search: `{lines, pvs, nodes, timeMs}`, lines `[[uci|null, cp], ...]` best first, cp for the side to move,
+   * pvs the principal variation of each line.
    * Terminal positions are answered without the engine (nodes 0). This is the single entry point a cache
    * keyed by (engine name, fenKey, depth, multipv) can wrap later.
    * @param {string} fen @param {number} depth @param {number} [multipv]
@@ -191,7 +192,7 @@ export class EnginePool {
     } catch (err) {
       return Promise.reject(new EngineAnalysisError(`invalid FEN: ${err.message}`));
     }
-    if (terminal) return Promise.resolve({ lines: terminal, nodes: 0, timeMs: 0 });
+    if (terminal) return Promise.resolve({ lines: terminal, pvs: [[]], nodes: 0, timeMs: 0 });
     if (!this.workers) return Promise.reject(new EngineAnalysisError('no engine worker is running'));
     return new Promise((resolve, reject) => {
       this._queue.push({ id: this._nextId++, fen, depth, multipv, resolve, reject });

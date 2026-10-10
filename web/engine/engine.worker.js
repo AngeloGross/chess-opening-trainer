@@ -12,7 +12,7 @@
 //   {type:'stop'}                               stops the running search, drops queued jobs
 // worker -> page:
 //   {type:'ready', name}                        once, after uciok/readyok; `name` is the UCI id name
-//   {type:'result', id, lines:[[uci|null, cp], ...], nodes, timeMs}
+//   {type:'result', id, lines:[[uci|null, cp], ...], pvs:[[uci, ...], ...], nodes, timeMs}  pvs: one PV per line
 //   {type:'error', id, message, stopped?}       id null for start-up failures; stopped:true after 'stop'
 // Terminal positions (mate, stalemate, insufficient material) are short-cut in pool.js, like engine.py.
 
@@ -111,7 +111,7 @@ async function run(job) {
   if (stopped()) return fail(job.id, 'stopped', { stopped: true });
   const lines = collector.lines();
   if (lines.length === 0) return fail(job.id, `engine returned no move for ${job.fen}`);
-  post({ type: 'result', id: job.id, lines, nodes: collector.nodes, timeMs });
+  post({ type: 'result', id: job.id, lines, pvs: collector.pvs(), nodes: collector.nodes, timeMs });
 }
 
 async function pump() {

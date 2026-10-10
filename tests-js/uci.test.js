@@ -60,6 +60,15 @@ describe('reduceSearch', () => {
       'bestmove e2e4 ponder e7e5',
     ];
     expect(reduceSearch(lines)).toEqual([['e2e4', 29], ['d2d4', 21]]);
+    const c = new SearchCollector();
+    for (const line of lines) c.push(line);
+    expect(c.pvs()).toEqual([['e2e4', 'e7e5', 'g1f3'], ['d2d4', 'd7d5']]);
+  });
+
+  it('gives one empty PV for the no-move result', () => {
+    const c = new SearchCollector();
+    for (const line of ['info depth 0 score mate 0', 'bestmove (none)']) c.push(line);
+    expect([c.lines(), c.pvs()]).toEqual([[[null, -MATE_CP]], [[]]]);
   });
 
   it('a line from an unfinished deeper iteration does not displace a deeper one from the same index', () => {

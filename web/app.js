@@ -28,6 +28,7 @@
 
 import { checkAlternatives } from './analysis/alternatives.js';
 import { Coordinator, DEFAULT_PERFS, LAZY_TOP, defaultOptions } from './analysis/coordinator.js';
+import { createExplainer } from './analysis/explainer.js';
 import {
   CALIBRATION_SETTING, cachedCalibration, calibrate, deviceFingerprint, preferredWorkers, withCalibration,
 } from './core/calibration.js';
@@ -192,7 +193,8 @@ function showDoc(doc, source) {
     app.trainer?.destroy();
     app.source = source;
     setView('trainer'); // visible before mounting, so chessground can measure the board
-    app.trainer = mountTrainer($('trainer'), doc, { migrateLegacyStats: source === 'cli', alternatives: alternativesFor });
+    app.trainer = mountTrainer($('trainer'), doc, { migrateLegacyStats: source === 'cli', alternatives: alternativesFor,
+      explainer: explainerFor });
     note('trainer-mount', { source, positions: doc.positions.length, games: doc.games });
   }
   $('player').textContent = doc.user ? `for ${doc.user}` : '';
@@ -442,6 +444,24 @@ async function alternativesFor(entry) {
   }
   note('alternatives-done', { key: entry.key, via, ms: Date.now() - t, acceptable: updated.acceptable, best: updated.best });
   return updated;
+}
+
+// ---------- engine line and "Why am I better?" ----------
+
+/** @type {Map<number, ReturnType<typeof createExplainer>>} depth -> explainer, for this page view */
+const explainers = new Map();
+
+/**
+ * The explainer for the document on screen (trainer.js asks after an answer): searches at the document's
+ * depth on the shared pool, started now if needed. Null without an engine.
+ */
+function explainerFor() {
+  if (!ENGINE_POSSIBLE) return null;
+  const depth = app.doc?.settings?.depth ?? DEFAULTS.depth;
+  if (!explainers.has(depth)) {
+    explainers.set(depth, createExplainer({ depth, analyse: (fen, d, multipv) => ensurePool().analyse(fen, d, multipv) }));
+  }
+  return explainers.get(depth);
 }
 
 // ---------- mobile run comfort ----------

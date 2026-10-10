@@ -32,6 +32,17 @@ def test_fixture_matches_python_reference(path):
     assert actual["progress"] == expected["progress"]
 
 
+def test_settled_material_golden_matches_python():
+    import chess
+
+    from opening_trainer.book import settled_material
+
+    cases = _load(SPEC / "golden" / "settled-material.json")["cases"]
+    assert len(cases) > 500
+    for fen, settled in cases:
+        assert settled_material(chess.Board(fen)) == settled, fen
+
+
 def test_round1_golden_matches_python_round():
     for num, den, rounded in _load(SPEC / "golden" / "round1.json")["cases"]:
         assert round(num / den, 1) == rounded, (num, den)

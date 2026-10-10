@@ -168,10 +168,13 @@ web/
   core/fetchPlan.js     newerParams, backfillParams, isSupported, Cursor (pure)
   lichess/client.js     checkUser, streamGames (fetch + ReadableStream)
   lichess/fetch.worker.js
-  engine/uci.js         UCI line parser → [(uci|null, cp)]   (pure)
+  engine/uci.js         UCI line parser → [(uci|null, cp)] + one PV per line (pure)
   engine/engine.worker.js  wraps vendor stockfish, one job at a time
   engine/pool.js        N workers, job queue, stop/terminate
   analysis/coordinator.js
+  analysis/explainer.js  eval line + "Why am I better?" searches, per page view (design-position-explanation.md)
+  core/material.js      settledMaterial (port of book.py settled_material, pure)
+  core/explain.js       engine line, pass FEN, verdict (pure)
   store/db.js           IndexedDB schema + typed accessors
   vendor/chess.js@1.4.0/…, vendor/chessground@9.2.1/…, vendor/stockfish@19.0.0/{stockfish-19-lite-single.js,.wasm,Copying.txt}
 ```

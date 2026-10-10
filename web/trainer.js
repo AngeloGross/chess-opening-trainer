@@ -9,8 +9,14 @@
 //
 // Sort order: a select over the list (core/trainerList.js SORTS, remembered in localStorage), "Most often
 // wrong" by default.
+//
+// Engine line and "Why am I better?" (design-position-explanation.md, slice 1): once a position is solved or
+// revealed, `opts.explainer()` searches it ("Engine: +1.0 for you · material equal"). From +0.8 without extra
+// material a button asks for the verdict (core/explain.js). The eval is never shown before the answer: it
+// would hint that something is to be found.
 import { Chessground } from './vendor/chessground@9.2.1/dist/chessground.min.js';
 import { Chess } from './vendor/chess.js@1.4.0/dist/esm/chess.js';
+import { engineLine, offersWhy } from './core/explain.js';
 import {
   SORT_KEY, filterPositions, loadSort, loadStats, mergeList, openingCounts, sortOrder, sortPositions, statsKeyFor,
 } from './core/trainerList.js';
@@ -52,12 +58,15 @@ function describe(pos) {
  * Show `doc` in `root` (the element holding the trainer markup of index.html).
  * @param {HTMLElement} root
  * @param {{user?: string, positions: object[]}} doc
- * @param {{migrateLegacyStats?: boolean, storage?: Storage, alternatives?: ((entry: object) => Promise<object>)|null}} [opts]
+ * @param {{migrateLegacyStats?: boolean, storage?: Storage, alternatives?: ((entry: object) => Promise<object>)|null,
+ *   explainer?: (() => ReturnType<typeof import('./analysis/explainer.js').createExplainer>|null)|null}} [opts]
  *   migrateLegacyStats: a CLI document; stats of the old single-user page move to this user's key once
  *   alternatives: completes an `unchecked` entry (analysis/alternatives.js); without it the entry keeps its window
+ *   explainer: the engine for the eval line and the verdict (analysis/explainer.js); null when there is no engine
  * @returns {{update: (doc: object) => void, destroy: () => void, readonly cg: any, readonly current: object|null}}
  */
-export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = globalThis.localStorage, alternatives = null } = {}) {
+export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = globalThis.localStorage, alternatives = null,
+  explainer = null } = {}) {
   const $ = (id) => root.querySelector(`#${id}`);
   const listeners = new AbortController();
   const on = (target, type, fn) => target.addEventListener(type, fn, { signal: listeners.signal });
@@ -78,6 +87,7 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
   /** @type {{key: string, uci: string, san: string}|null} a move waiting for the alternatives check */
   let held = null;
   let destroyed = false;
+  let visit = 0; // bumped whenever the answer leaves the screen: late engine answers for it are dropped
 
   const cg = Chessground($('board'), {
     movable: { free: false, showDests: true, events: { after: onMove } },
@@ -167,6 +177,7 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
       const note = uci === pos.best ? 'That is the engine\'s best move.' : `Also good. Engine best: ${pos.best_san}.`;
       showFeedback('good', `Correct: ${move.san}`, note);
       setActions({ retry: false, reveal: false, nextPrimary: true });
+      showEngine(pos);
     } else {
       showFeedback('bad', `Not quite: ${move.san}`, 'Try again or reveal the answer.');
       setActions({ retry: true, reveal: true, nextPrimary: false });
@@ -184,6 +195,7 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     renderAnswer(pos);
     setActions({ retry: true, reveal: false, nextPrimary: true });
     renderList();
+    showEngine(pos);
   }
 
   function renderAnswer(pos) {
@@ -207,6 +219,49 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     resetBoard(true);
     showFeedback('', '', '');
     setActions({ retry: false, reveal: true, nextPrimary: false });
+    hideEngine();
+  }
+
+  // ---------- engine line and "Why am I better?" ----------
+
+  function hideEngine() {
+    visit += 1;
+    $('engine').hidden = true;
+    $('why').hidden = true;
+    $('why-text').hidden = true;
+  }
+
+  /** The eval line for the answered position, then the button when it qualifies. */
+  function showEngine(pos) {
+    const ex = explainer?.();
+    if (!ex || !$('engine').hidden) return;
+    const mine = ++visit;
+    const current = () => !destroyed && mine === visit && filtered[index]?.key === pos.key;
+    $('engine').hidden = false;
+    $('engine-line').textContent = 'Engine: thinking…';
+    ex.evaluation(pos.fen).then((ev) => {
+      if (!current()) return;
+      $('engine-line').textContent = engineLine(ev);
+      $('why').hidden = !offersWhy(ev);
+      $('why').disabled = false;
+    }, (err) => {
+      if (!current()) return;
+      console.warn('engine line failed', err);
+      $('engine-line').textContent = 'Engine: no evaluation right now.';
+    });
+    $('why').onclick = () => {
+      $('why').disabled = true;
+      $('why-text').hidden = false;
+      $('why-text').textContent = 'Working it out…';
+      ex.verdict(pos.fen).then((v) => {
+        if (current()) $('why-text').textContent = v.text;
+      }, (err) => {
+        if (!current()) return;
+        console.warn('verdict failed', err);
+        $('why-text').textContent = 'The engine could not answer right now. Try again later.';
+        $('why').disabled = false;
+      });
+    };
   }
 
   // ---------- rendering ----------
@@ -266,6 +321,7 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     // Nothing to quiz: clear and lock the board so no move handler can run.
     chess = null;
     index = 0;
+    hideEngine();
     cg.set({ fen: '8/8/8/8/8/8/8/8', lastMove: undefined, check: false, movable: { color: undefined, dests: new Map() } });
     cg.setAutoShapes([]);
     $('pos-title').textContent = positions.length ? 'No positions match the filters' : 'No positions yet';
@@ -308,6 +364,7 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     attempted = false;
     revealed = false;
     held = null;
+    hideEngine();
     resetBoard(true);
     renderInfo(filtered[index]);
     showFeedback('', '', '');
@@ -446,6 +503,7 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     destroy() {
       destroyed = true;
       setCheckState('');
+      hideEngine();
       listeners.abort();
       cg.destroy();
     },
