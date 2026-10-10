@@ -1,6 +1,0 @@
-{
- "about": "opening_trainer/book.py gambit_book(); regenerate with tools/make_fixture.py",
- "book": "chess-openings@a6189a3/gambits",
- "size": 1315,
- "sha256": "64d5454a5adfe046352efe2e45301b916fc1d39209568cf3f35835fa49d99de1"
-}

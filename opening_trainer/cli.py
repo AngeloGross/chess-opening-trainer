@@ -16,7 +16,7 @@ import chess.engine
 from . import WEB_DIR
 from .aggregate import POSITIONS_PATH, aggregate, write_positions
 from .analyse import analyse_game
-from .book import BOOK_ID, DEFAULT_BOOK_MOVES, Skip, gambit_book
+from .book import BOOK_ID, DEFAULT_BOOK_MOVES, Skip, load_book
 from .engine import Engine, EngineAnalysisError, EngineMissingError
 from .fetch import FetchError, check_user, fetch, games_path, is_supported, read_games
 from .settings import UserNotSetError, remember_user, resolve_user
@@ -115,7 +115,7 @@ def cmd_analyse(args: argparse.Namespace) -> None:
         print("No stored games match the filters. Run `uv run trainer fetch` first.")
         return
 
-    skip = Skip(book=gambit_book() if args.book_moves else frozenset(), book_moves=args.book_moves)
+    skip = Skip(book=load_book() if args.book_moves else frozenset(), book_moves=args.book_moves)
     progress = Progress()
     results = []
     with Engine(depth=args.depth) as engine:
@@ -267,8 +267,8 @@ def _add_game_options(p: argparse.ArgumentParser, analysis: bool) -> None:
     if analysis:
         p.add_argument("--max-moves", type=_positive_int, default=12, help="scan your first N moves (default: %(default)s)")
         p.add_argument("--book-moves", type=_non_negative_int, default=DEFAULT_BOOK_MOVES,
-                       help="within your first N moves, a move that reaches a named gambit position is not "
-                            "judged; 0 judges every move (default: %(default)s)")
+                       help="within your first N moves, a gambit move (opening book: named gambits and "
+                            "sacrifices) is not judged; 0 judges every move (default: %(default)s)")
         p.add_argument("--threshold", type=_positive_int, default=20, help="mistake threshold in cp (default: %(default)s)")
         p.add_argument("--depth", type=_positive_int, default=18, help="Stockfish depth (default: %(default)s)")
 

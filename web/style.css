@@ -80,7 +80,6 @@ select { width: 100%; padding: 4px; background: var(--bg); color: var(--text); b
 #position-list li:hover { background: var(--selected); }
 #position-list li.current { background: var(--selected); font-weight: 600; }
 #position-list li.solved .name::after { content: " \2713"; color: var(--accent); }
-#position-list li.intended { opacity: 0.6; }
 #position-list .stats { display: block; color: var(--muted); font-weight: normal; }
 
 #board { width: 100%; aspect-ratio: 1 / 1; }

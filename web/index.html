@@ -62,8 +62,8 @@
           </label>
         </div>
         <p class="muted small">Blitz, rapid and classical games; your first <span id="moves-info">12</span> moves; a loss
-          of 20 cp or more counts as a mistake. Named gambit moves within your first 5 moves and moves you marked as
-          intended are not judged. Your games and the analysis stay in this browser.</p>
+          of 20 cp or more counts as a mistake. Gambit moves in your first 10 moves (named gambits and known sacrifices
+          from the Lichess opening list) are not judged. Your games and the analysis stay in this browser.</p>
         <p class="muted small"><span id="calibration-info"></span>
           <button id="remeasure" type="button" class="link" hidden>Re-measure</button></p>
       </details>
@@ -166,7 +166,6 @@
             </select>
           </label>
           <label class="check"><input type="checkbox" id="filter-unsolved"> Unsolved only</label>
-          <label class="check"><input type="checkbox" id="filter-intended"> Show intended</label>
         </div>
         <ol id="position-list"></ol>
       </aside>
@@ -190,7 +189,6 @@
           <button id="retry" type="button" hidden>Retry</button>
           <button id="reveal" type="button" hidden>Reveal</button>
         </div>
-        <p><button id="mark-intended" type="button" class="link" hidden></button></p>
         <p><a id="lichess-link" href="#" target="_blank" rel="noopener">Open in Lichess analysis</a></p>
         <div id="games"></div>
       </section>

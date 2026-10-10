@@ -9,13 +9,12 @@ FixtureEngine from tests/helpers.py; vitest runs the same files through web/core
 Scripted scenarios are defined below with SAN move lists, so FEN keys are always computed by
 python-chess. A hand-written fixture (any other *.json in spec/fixtures/) keeps its inputs and only
 gets its `expected` block recomputed. spec/golden/round1.json holds Python round(x, 1) golden values,
-spec/golden/gambit-book.json the size and digest of the gambit book.
+and web/book/gambits.json is the gambit book (opening_trainer/book.py) that the CLI and the browser read.
 """
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 from fractions import Fraction
@@ -29,7 +28,7 @@ sys.path.insert(0, str(ROOT))
 
 from helpers import key_after as key, run_fixture  # noqa: E402
 
-from opening_trainer.book import BOOK_ID, gambit_book  # noqa: E402
+from opening_trainer.book import BOOK_PATH, book_document  # noqa: E402
 from opening_trainer.engine import MATE_CP  # noqa: E402
 
 USER = "AngelOgro"
@@ -404,8 +403,6 @@ def deliberate_moves():
     g.add("e4 e5 f4 exf4 Nf3 g5", **w, opening=("C33", "King's Gambit Accepted"))  # 2.f4 is book, 3.Nf3 is fine
     g.add("e4 e5 Nf3 Nc6 Bc4 Bc5 b4", **w, opening=("C51", "Italian Game: Evans Gambit"))  # 4.b4 beyond book_moves 3
     g.add("e4 e5 Nf3 f6 Nxe5", white="opponent", black=USER, opening=("C40", "Damiano Defense"))  # not book
-    g.add("e4 e5 Qh5 Nc6 Bc4", **w, opening=("C20", "Wayward Queen Attack"))  # marked as intended
-    g.add("e4 c5 Qh5", **w, opening=("B20", "Sicilian Defense"))  # intended only after 1...e5: still a mistake
     engine = {
         key("d4"): ("d7d5", 20), key("d4", "e5"): ("d4e5", -150),  # 1...e5 would lose 170: not judged
         key("d4", "e5", "dxe5"): ("d8e7", -120), key("d4", "e5", "dxe5", "Nc6"): ("g1f3", 150),  # 2...Nc6 loses 30
@@ -414,23 +411,18 @@ def deliberate_moves():
         key("e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5"): ("c2c3", 40),
         key("e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "b4"): ("c5b4", 0),  # 4.b4 loses 40: judged (move 4 > 3)
         key("e4", "e5", "Nf3"): ("b8c6", -30), key("e4", "e5", "Nf3", "f6"): ("f3e5", 120),  # 2...f6 loses 90
-        key("e4", "e5", "Qh5"): ("b8c6", -10),  # 2.Qh5 marked: not judged
-        key("e4", "e5", "Qh5", "Nc6"): ("f1c4", 30),
-        key("e4", "c5"): ("g1f3", 30), key("e4", "c5", "Qh5"): ("g8f6", 20),  # 2.Qh5 here: loss 50
         key(): ("e2e4", 30), key("e4"): ("e7e5", 25),
     }
     skip = {
         "book": sorted({key("d4", "e5"), key("e4", "e5", "f4"), key("e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "b4")}),
         "book_moves": 3,
-        "intended": [f"{key('e4', 'e5')}|d1h5"],
     }
     return fixture("deliberate-moves", [
         "a move that reaches a book position within book_moves is not evaluated; the scan goes on",
         "the next real mistake of that game is found (Englund: 2...Nc6? after the book 1...e5)",
         "a book move beyond book_moves is judged like any other (Evans 4.b4 with book_moves 3)",
         "a move not in the book is judged (Damiano 2...f6)",
-        "a move marked as intended is not judged at any move number; skipped positions still count as reached",
-        "an intended mark is per position: the same move elsewhere is judged",
+        "skipped positions still count as reached",
     ], g, engine, skip=skip)
 
 
@@ -458,17 +450,6 @@ def round1_golden() -> dict:
     }
 
 
-def gambit_book_golden() -> dict:
-    """Size and digest of the gambit book as python-chess builds it; core/book.js must build the same set."""
-    keys = sorted(gambit_book())
-    return {
-        "about": "opening_trainer/book.py gambit_book(); regenerate with tools/make_fixture.py",
-        "book": BOOK_ID,
-        "size": len(keys),
-        "sha256": hashlib.sha256("\n".join(keys).encode()).hexdigest(),
-    }
-
-
 def dump(doc) -> str:
     return json.dumps(doc, indent=1, ensure_ascii=False) + "\n"
 
@@ -492,7 +473,7 @@ def main() -> int:
             fx["expected"] = run_fixture(fx)
             outputs[path] = dump(fx)
     outputs[GOLDEN / "round1.json"] = dump(round1_golden())
-    outputs[GOLDEN / "gambit-book.json"] = dump(gambit_book_golden())
+    outputs[BOOK_PATH] = json.dumps(book_document(), indent=0, ensure_ascii=False) + "\n"
 
     stale = [p for p, text in outputs.items() if not p.is_file() or p.read_text(encoding="utf-8") != text]
     if args.check:

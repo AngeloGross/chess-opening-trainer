@@ -1,16 +1,24 @@
-"""Moves that are played on purpose: the gambit book and moves the player marked as intended.
+"""The gambit book: moves played on purpose, which the engine would call inaccuracies.
 
-A gambit gives up material or eval deliberately, so the engine calls its key move an inaccuracy. The
-book is the final position of every Lichess opening line whose name contains "Gambit" (vendored data in
-web/vendor/chess-openings@*/): the position that carries the gambit's name. Only final positions, because
-a line's earlier moves belong to other names ("Damiano Defense, Damiano Gambit" passes 2...f6, which is
-just the Damiano Defense). A player's move that reaches a book position within his first `book_moves`
-moves is not judged; the scan goes on to the next move.
+Built from the Lichess opening list (lichess-org/chess-openings, vendored in web/vendor/chess-openings@*/)
+by `tools/make_fixture.py` into web/book/gambits.json, which both the CLI and the browser read. A book
+position is the position after
+- the last move of every line whose name contains "Gambit" (Englund, Stafford, King's Gambit, ...): the
+  position that carries the gambit's name. Earlier moves of such a line belong to other names ("Damiano
+  Defense, Damiano Gambit" passes 2...f6, which is just the Damiano Defense);
+- a sacrifice in any named line, called a gambit or not (Fried Liver 6.Nxf7, Halloween 4.Nxe5, Traxler
+  4...Bc5, Marshall 8...d5): the line ends with one side 1 to 3 points of material down once the hanging
+  captures are played out, so that side gave material on purpose. Its move that started the deficit and
+  its later moves of the line are book. A line ending in mate is a trap, not a gambit, and is left out.
+
+A player's move that reaches a book position within his first `book_moves` moves is not judged; the scan
+goes on to the next move.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import json
+from dataclasses import dataclass
 from pathlib import Path
 
 import chess
@@ -18,61 +26,118 @@ import chess
 from . import WEB_DIR
 from .engine import fen_key
 
-BOOK_ID = "chess-openings@a6189a3/gambits"
-BOOK_DIR = WEB_DIR / "vendor" / "chess-openings@a6189a3"
-BOOK_FILES = ("a.tsv", "b.tsv", "c.tsv", "d.tsv", "e.tsv")
-DEFAULT_BOOK_MOVES = 5
+BOOK_ID = "chess-openings@a6189a3/gambits-2"
+SOURCE_DIR = WEB_DIR / "vendor" / "chess-openings@a6189a3"
+SOURCE_FILES = ("a.tsv", "b.tsv", "c.tsv", "d.tsv", "e.tsv")
+BOOK_PATH = WEB_DIR / "book" / "gambits.json"
+DEFAULT_BOOK_MOVES = 10
+MAX_DEFICIT = 3  # a piece for a pawn is 2; more than 3 is a trap or a blunder line, not a gambit
+QUIESCENCE_PLIES = 8
+VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 0}
 
 
-def is_gambit_line(name: str) -> bool:
+def is_gambit_name(name: str) -> bool:
     return "gambit" in name.lower()
 
 
-def line_key(pgn: str) -> str | None:
-    """FEN key after the last move of a TSV `pgn` column ("1. e4 e5 2. f4"); None if a move does not parse."""
+def _material(board: chess.Board) -> int:
+    """Material of the side to move minus the other side's."""
+    return sum(VALUES[p.piece_type] * (1 if p.color == board.turn else -1) for p in board.piece_map().values())
+
+
+def _quiescence(board: chess.Board, alpha: int, beta: int, plies: int) -> int:
+    stand = _material(board)
+    if plies == 0 or stand >= beta:
+        return stand
+    alpha = max(alpha, stand)
+    captures = sorted(board.generate_legal_captures(), key=lambda m: -VALUES.get(board.piece_type_at(m.to_square), 1))
+    for move in captures:
+        board.push(move)
+        score = -_quiescence(board, -beta, -alpha, plies - 1)
+        board.pop()
+        if score >= beta:
+            return score
+        alpha = max(alpha, score)
+    return alpha
+
+
+def settled_material(board: chess.Board) -> int:
+    """White's material minus Black's once the captures on the board are played out (capture-only search)."""
+    score = _quiescence(board, -100, 100, QUIESCENCE_PLIES)
+    return score if board.turn == chess.WHITE else -score
+
+
+def _moves(pgn: str) -> list[str]:
+    return [t for t in pgn.split() if not t.rstrip(".").isdigit()]
+
+
+def line_book_keys(name: str, pgn: str) -> list[str]:
+    """Book keys one opening line contributes (see the module docstring); [] if a move does not parse."""
     board = chess.Board()
-    for token in pgn.split():
-        if token.rstrip(".").isdigit():
-            continue
-        try:
-            board.push_san(token)
-        except ValueError:
-            return None
-    return fen_key(board.fen()) if board.move_stack else None
+    keys_after, movers, balance = [], [], [0]
+    try:
+        for san in _moves(pgn):
+            movers.append(board.turn)
+            board.push_san(san)
+            keys_after.append(fen_key(board.fen()))
+            balance.append(settled_material(board))
+    except ValueError:
+        return []
+    if not keys_after:
+        return []
+    keys = [keys_after[-1]] if is_gambit_name(name) else []
+
+    end = balance[-1]
+    if end == 0 or abs(end) > MAX_DEFICIT or board.is_checkmate():
+        return keys
+    giver = chess.WHITE if end < 0 else chess.BLACK
+    own = [b if giver == chess.WHITE else -b for b in balance]  # the giver's balance, after i moves
+    # The deficit starts at the earliest position from which the giver is never ahead again.
+    start = len(own) - 1
+    while start > 1 and own[start - 1] <= 0:
+        start -= 1
+    while own[start] == 0:
+        start += 1
+    keys += [keys_after[i] for i, mover in enumerate(movers) if mover == giver and i + 1 >= start]
+    return list(dict.fromkeys(keys))
 
 
-def parse_book(texts: list[str]) -> frozenset[str]:
-    """The gambit book from the TSV files' contents."""
+def build_book(texts: list[str]) -> list[str]:
+    """Sorted book keys from the TSV files' contents (columns eco, name, pgn)."""
     keys: set[str] = set()
     for text in texts:
-        for line in text.splitlines()[1:]:  # header: eco, name, pgn
+        for line in text.splitlines()[1:]:
             cols = line.split("\t")
-            if len(cols) >= 3 and is_gambit_line(cols[1]):
-                key = line_key(cols[2])
-                if key is not None:
-                    keys.add(key)
-    return frozenset(keys)
+            if len(cols) >= 3:
+                keys.update(line_book_keys(cols[1], cols[2]))
+    return sorted(keys)
 
 
-def gambit_book(directory: Path = BOOK_DIR) -> frozenset[str]:
-    return parse_book([(directory / name).read_text(encoding="utf-8") for name in BOOK_FILES])
+def book_document(source_dir: Path = SOURCE_DIR) -> dict:
+    """The contents of web/book/gambits.json."""
+    keys = build_book([(source_dir / name).read_text(encoding="utf-8") for name in SOURCE_FILES])
+    return {
+        "about": "Gambit book: generated by tools/make_fixture.py from web/vendor/chess-openings@a6189a3 "
+                 "(opening_trainer/book.py explains the rule). Do not edit.",
+        "book": BOOK_ID,
+        "keys": keys,
+    }
 
 
-def intended_id(key: str, uci: str) -> str:
-    """How a move marked as intended is stored: FEN key of the position before it, then the UCI move."""
-    return f"{key}|{uci}"
+def load_book(path: Path = BOOK_PATH) -> frozenset[str]:
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    if doc.get("book") != BOOK_ID:
+        raise ValueError(f"{path} is {doc.get('book')!r}, expected {BOOK_ID!r}: run tools/make_fixture.py")
+    return frozenset(doc["keys"])
 
 
 @dataclass(frozen=True)
 class Skip:
     book: frozenset[str] = frozenset()
     book_moves: int = DEFAULT_BOOK_MOVES
-    intended: frozenset[str] = field(default_factory=frozenset)
 
-    def skips(self, board: chess.Board, move: chess.Move, key: str) -> bool:
-        """Whether the player's `move` in `board` (not yet pushed; `key` is its FEN key) is played on purpose."""
-        if intended_id(key, move.uci()) in self.intended:
-            return True
+    def skips(self, board: chess.Board, move: chess.Move) -> bool:
+        """Whether the player's `move` in `board` (not yet pushed) reaches a book position in time."""
         if not self.book or board.fullmove_number > self.book_moves:
             return False
         board.push(move)

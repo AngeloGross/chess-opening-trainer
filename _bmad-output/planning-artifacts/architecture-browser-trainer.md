@@ -186,7 +186,7 @@ The pure modules import chess.js by a **relative path** (`../vendor/…`). The s
 | `games` | `[userId, gameId]` | the Lichess game object, slimmed to `id, createdAt, perf, variant, players, opening, moves` | index `byUserCreated` `[userId, createdAt]` |
 | `fetchState` | `userId` | `{perfs[], oldestSeen, newestSeen, exhausted}` | same fields as `Cursor` in `fetch.py` |
 | `evals` | `[engineId, fenKey, depth, multipv]` | `[[uci\|null, cp], …]` | same key as `evals.sqlite`; `engineId` = UCI `id name` + vendored version |
-| `results` | `[userId, runKey, gameId]` | `{color, reached[], mistake\|null}` | `runKey` = hash of `{engineId, depth, maxMoves, threshold, bookId, bookMoves, intended[]}` (runKey/2, 2026-10-10); enables resume and progressive aggregation |
+| `results` | `[userId, runKey, gameId]` | `{color, reached[], mistake\|null}` | `runKey` = hash of `{engineId, depth, maxMoves, threshold, bookId, bookMoves}` (runKey/3, 2026-10-10); enables resume and progressive aggregation |
 | `positions` | `userId` | the full `positions.json` document | what the trainer reads |
 
 `userId` is the lower-cased Lichess id. Quiz stats stay in `localStorage` as today, under the key `opening-trainer:stats:<userId>` (today it is not per user).
@@ -209,14 +209,14 @@ The pure modules import chess.js by a **relative path** (`../vendor/…`). The s
 **Invariants that must stay identical.** These are covered by the shared fixtures (§9).
 
 1. **FEN key** = the first four FEN fields. **Risk to verify first:** python-chess `board.fen()` writes the en-passant square only if a *legal* en-passant capture exists. chess.js must produce the same field, or keys split. A fixture with a double pawn push with and without an adjacent enemy pawn pins this down. If chess.js differs, `fenKey` normalises the field itself.
-2. **Scan:** only the player's moves; stop when `fullmoveNumber > maxMoves`; stop at an unparsable SAN; record `reached` for every own move scanned. **Deliberate moves (2026-10-10)** are recorded in `reached` but never evaluated, and the scan goes on: a move marked as intended (`"<fenKey>|<uci>"`, at any move number), or, while `fullmoveNumber ≤ bookMoves`, a move whose resulting key is in the gambit book (the final position of every `chess-openings` line whose name contains "Gambit"; `core/book.js` = `book.py`, pinned by `spec/golden/gambit-book.json` and `spec/fixtures/deliberate-moves.json`).
+2. **Scan:** only the player's moves; stop when `fullmoveNumber > maxMoves`; stop at an unparsable SAN; record `reached` for every own move scanned. **Gambit moves (2026-10-10)** are recorded in `reached` but never evaluated, and the scan goes on: while `fullmoveNumber ≤ bookMoves`, a move whose resulting key is in the gambit book `web/book/gambits.json`. `book.py` builds it from `chess-openings` (via `tools/make_fixture.py`): the last position of every line named "Gambit", plus the sacrificing side's moves in any named line that ends 1 to 3 points of settled material down (capture-only search), not mate. CLI and browser read the same file; `spec/fixtures/deliberate-moves.json` pins the skip rule.
 3. **Mistake:** analyse only if `best ≠ null`, `|evalBest| ≤ 300` and `played ≠ best`. Then `loss = max(0, evalBest − (−evalAfter))`, and it is a mistake if `loss ≥ threshold`. The **first** mistake ends the game.
 4. **Mate** = ±10000 cp, and the normal rules then apply.
 5. **Aggregation:** per key, `errors`; `reached = max(reached[key], errors)`; `avg_loss` uses each loss **capped at 500**; `raw_avg_loss` is uncapped; `score = errors × avg_loss`; sort by `(−score, −errors, key)`; at most 5 game URLs in game order (most recent first); `/black` suffix and `#ply`.
 6. **Accept window** from one MultiPV-5 search: moves with `bestCp − cp < threshold` (strict), minus the player's recorded mistake moves; same fallback chain as `aggregate.py`. `best` must be in `acceptable`.
 7. **Tie-breaks** follow `Counter.most_common`: count descending, then first-inserted. This applies to `played` and to the chosen opening.
 8. **Rounding:** Python `round(x, 1)` is round-half-even on the binary float. The JS port uses one helper, `round1`, whose output is asserted against Python-generated golden values. Plain `Math.round(x*10)/10` is not used.
-9. **Defaults:** perf `blitz,rapid,classical`, max moves 12 (15 until 2026-10-10), book moves 5, threshold 20.
+9. **Defaults:** perf `blitz,rapid,classical`, max moves 12 (15 until 2026-10-10), book moves 10, threshold 20.
 
 ## 7. Engine worker protocol
 

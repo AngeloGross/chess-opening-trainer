@@ -35,7 +35,7 @@ export const LAZY_TOP = 30;
 const FLUSH_MS = 250;
 const CHECKPOINT_GAMES = 25;
 const CHECKPOINT_MS = 10_000;
-const RUN_KEY_VERSION = 'runKey/2';
+const RUN_KEY_VERSION = 'runKey/3';
 
 /**
  * @typedef {object} Options
@@ -45,7 +45,6 @@ const RUN_KEY_VERSION = 'runKey/2';
  * @property {number} maxMoves
  * @property {number} bookMoves  within the first N moves a move reaching a `book` position is not judged
  * @property {Set<string>} book  gambit book (core/book.js loadGambitBook); empty = no book
- * @property {Set<string>} intended  moves marked as intended (core/book.js intendedId), never judged
  * @property {number} threshold
  * @property {number} depth
  * @property {'eager'|'lazy'} multipv
@@ -73,7 +72,6 @@ export function defaultOptions(nav = globalThis.navigator ?? {}) {
     maxMoves: 12,
     bookMoves: DEFAULT_BOOK_MOVES,
     book: new Set(),
-    intended: new Set(),
     threshold: 20,
     depth: mobile ? 12 : 14,
     multipv: mobile ? 'lazy' : 'eager',
@@ -107,20 +105,19 @@ export function fnv1a64(text) {
 
 /**
  * Identity of one analysis run: results of a run are only reused by a run with the same key.
- * runKey = "r2-" + fnv1a64(JSON.stringify(["runKey/2", userId, sortedUniquePerfs, maxMoves, threshold, depth, engineId,
- *   bookId, bookMoves, sortedUniqueIntended])) where userId is the lower-cased name and bookId is BOOK_ID, or null
- * when no book is used (then bookMoves is 0). `since` and `maxGames` only select games, so they are not part
- * of it: a larger game count reuses every finished game. Marking a move as intended is a new run; its
- * positions are all in the eval cache, so it costs no engine time.
+ * runKey = "r3-" + fnv1a64(JSON.stringify(["runKey/3", userId, sortedUniquePerfs, maxMoves, threshold, depth, engineId,
+ *   bookId, bookMoves])) where userId is the lower-cased name and bookId is BOOK_ID, or null when no book is used
+ * (then bookMoves is 0). `since` and `maxGames` only select games, so they are not part of it: a larger game
+ * count reuses every finished game.
  * @param {{user: string, perfs: string[], maxMoves: number, threshold: number, depth: number, engineId: string,
- *   bookMoves?: number, book?: Set<string>, intended?: Iterable<string>}} p
+ *   bookMoves?: number, book?: Set<string>}} p
  * @returns {string}
  */
-export function runKeyOf({ user, perfs, maxMoves, threshold, depth, engineId, bookMoves = 0, book = new Set(), intended = [] }) {
+export function runKeyOf({ user, perfs, maxMoves, threshold, depth, engineId, bookMoves = 0, book = new Set() }) {
   const useBook = book.size > 0 && bookMoves > 0;
   const canonical = JSON.stringify([RUN_KEY_VERSION, userIdOf(user), [...new Set(perfs)].sort(), maxMoves, threshold, depth, engineId,
-    useBook ? BOOK_ID : null, useBook ? bookMoves : 0, [...new Set(intended)].sort()]);
-  return `r2-${fnv1a64(canonical)}`;
+    useBook ? BOOK_ID : null, useBook ? bookMoves : 0]);
+  return `r3-${fnv1a64(canonical)}`;
 }
 
 /** Thrown into running games by `stop()`. */
@@ -229,8 +226,8 @@ export class Coordinator {
   init() {
     this._initialised ??= (async () => {
       this.engineId = await this.pool.ready();
-      const { perfs, maxMoves, threshold, depth, bookMoves, book, intended } = this.opts;
-      this.runKey = runKeyOf({ user: this.user, perfs, maxMoves, threshold, depth, engineId: this.engineId, bookMoves, book, intended });
+      const { perfs, maxMoves, threshold, depth, bookMoves, book } = this.opts;
+      this.runKey = runKeyOf({ user: this.user, perfs, maxMoves, threshold, depth, engineId: this.engineId, bookMoves, book });
       Object.assign(this.progress, { engineId: this.engineId, runKey: this.runKey });
     })();
     return this._initialised;
@@ -475,8 +472,8 @@ export class Coordinator {
   async _game(game) {
     let res;
     try {
-      const { maxMoves, threshold, book, bookMoves, intended } = this.opts;
-      res = await analyseGame(game, this.user, this.evaluator, maxMoves, threshold, { book, bookMoves, intended });
+      const { maxMoves, threshold, book, bookMoves } = this.opts;
+      res = await analyseGame(game, this.user, this.evaluator, maxMoves, threshold, { book, bookMoves });
     } catch (err) {
       if (!(err instanceof StoppedError)) this._fail(err);
       return; // not finished: no result row, so a later run analyses it again

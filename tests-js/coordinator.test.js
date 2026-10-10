@@ -58,7 +58,7 @@ async function dbWith(games, user) {
 }
 
 function options(fx, extra = {}) {
-  const skip = fx.skip ? { book: new Set(fx.skip.book ?? []), bookMoves: fx.skip.book_moves, intended: new Set(fx.skip.intended ?? []) } : {};
+  const skip = fx.skip ? { book: new Set(fx.skip.book), bookMoves: fx.skip.book_moves } : {};
   return {
     perfs: ['blitz'], since: null, maxGames: null, maxMoves: fx.settings.max_moves, threshold: fx.settings.threshold,
     depth: 14, multipv: 'eager', flushMs: 1, ...skip, ...extra,
@@ -78,7 +78,7 @@ describe('selectGames and defaults', () => {
 
   it('defaults per device: desktop eager d14/500, mobile lazy top-30 d12/150', () => {
     const desktop = defaultOptions({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0.0.0' });
-    expect(desktop).toMatchObject({ mobile: false, depth: 14, maxGames: 500, multipv: 'eager', maxMoves: 12, bookMoves: 5, threshold: 20 });
+    expect(desktop).toMatchObject({ mobile: false, depth: 14, maxGames: 500, multipv: 'eager', maxMoves: 12, bookMoves: 10, threshold: 20 });
     expect(desktop.perfs).toEqual(['blitz', 'rapid', 'classical']);
     const phone = defaultOptions({ userAgent: 'Mozilla/5.0 (Linux; Android 14) Mobile Safari/537.36' });
     expect(phone).toMatchObject({ mobile: true, depth: 12, maxGames: 150, multipv: 'lazy', lazyTop: 30 });
@@ -91,10 +91,8 @@ describe('runKey', () => {
 
   it('is stable for the same settings, case of the name and perf order', () => {
     const key = runKeyOf(base);
-    expect(key).toMatch(/^r2-[0-9a-f]{16}$/);
+    expect(key).toMatch(/^r3-[0-9a-f]{16}$/);
     expect(runKeyOf({ ...base, user: 'angelogro', perfs: ['rapid', 'blitz', 'blitz'] })).toBe(key);
-    const marked = { ...base, intended: ['k|a', 'k|b'] };
-    expect(runKeyOf({ ...marked, intended: new Set(['k|b', 'k|a', 'k|a']) })).toBe(runKeyOf(marked));
   });
 
   it('book moves only count with a book', () => {
@@ -108,7 +106,7 @@ describe('runKey', () => {
 
   it('changes with every analysis setting and the engine', () => {
     const key = runKeyOf(base);
-    for (const change of [{ user: 'x' }, { perfs: ['blitz'] }, { maxMoves: 14 }, { threshold: 21 }, { depth: 12 }, { engineId: 'F' }, { intended: ['k|a'] }]) {
+    for (const change of [{ user: 'x' }, { perfs: ['blitz'] }, { maxMoves: 14 }, { threshold: 21 }, { depth: 12 }, { engineId: 'F' }]) {
       expect(runKeyOf({ ...base, ...change })).not.toBe(key);
     }
   });
@@ -131,7 +129,7 @@ describe('coordinator on the shared fixtures', () => {
       expect(JSON.stringify(doc.positions)).toBe(JSON.stringify(fx.expected.positions));
       expect(doc.games).toBe(analysed.length);
       expect(doc.clean_games).toBe(analysed.filter((r) => r.mistake === null).length);
-      const book = fx.skip?.book?.length && fx.skip.book_moves ? { book_moves: fx.skip.book_moves, book: 'chess-openings@a6189a3/gambits' } : { book_moves: 0, book: null };
+      const book = fx.skip?.book?.length && fx.skip.book_moves ? { book_moves: fx.skip.book_moves, book: 'chess-openings@a6189a3/gambits-2' } : { book_moves: 0, book: null };
       expect(doc.settings).toEqual({ perf: ['blitz'], max_moves: fx.settings.max_moves, threshold: fx.settings.threshold, depth: 14, engine: 'Fake Engine 1', ...book });
       expect(Object.keys(doc)).toEqual(['generated', 'user', 'games', 'clean_games', 'settings', 'positions']);
       expect(doc.generated).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00$/);

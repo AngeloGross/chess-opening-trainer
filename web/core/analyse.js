@@ -50,7 +50,7 @@ export function sanOf(fen, uci) {
 
 /**
  * Scan the player's first `maxMoves` moves for the first loss >= threshold.
- * Moves `skip` says are played on purpose (gambit book, marked as intended) are not judged.
+ * Moves that reach a gambit book position (`skip`) are not judged.
  * @param {string[]} sans
  * @param {Color} color
  * @param {Evaluator} engine
@@ -82,7 +82,7 @@ export async function analyseMoves(sans, color, engine, maxMoves = 12, threshold
     const key = fenKey(fen);
     result.reached.push(key);
     const played = uciOf(move);
-    if (skips(skip, key, played, fullmove, board.fen())) continue; // the move is already on the board
+    if (skips(skip, fullmove, board.fen())) continue; // the move is already on the board
     const [best, evalBest] = await engine.evaluate(fen);
 
     if (best !== null && Math.abs(evalBest) <= DECIDED_CP && played !== best) {

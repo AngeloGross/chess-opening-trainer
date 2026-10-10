@@ -8,7 +8,7 @@
 // would replace the imported document with a fresh (possibly partial) one. A full backup or a new
 // browser analysis clears it.
 import { buildBackup, choosePositions, cleanStats, mergeStats } from '../core/backup.js';
-import { loadIntended, saveIntended, statsKeyFor } from '../core/trainerList.js';
+import { statsKeyFor } from '../core/trainerList.js';
 import { exportUserData, getPositions, getSetting, importUserData, setSetting, userIdOf } from './db.js';
 
 export const OPTIONS_SETTING = 'analysisOptions';
@@ -37,10 +37,9 @@ export async function collectBackup(db, storage, doc, kind) {
   const user = doc.user;
   const stored = await exportUserData(db, user, { full: kind === 'full' });
   const analysisOptions = await getSetting(db, OPTIONS_SETTING);
-  const intended = [...loadIntended(storage, user)].sort();
   return buildBackup({
     kind, user, ...stored, positions: doc, stats: readStats(storage, user),
-    settings: { ...(analysisOptions ? { analysisOptions } : {}), ...(intended.length ? { intended } : {}) },
+    settings: analysisOptions ? { analysisOptions } : {},
   });
 }
 
@@ -87,13 +86,6 @@ export async function applyImport(db, storage, incoming, mode) {
     writeStats(storage, user, stats);
   } catch {
     // storage blocked: the analysis is imported, stats are not
-  }
-
-  // Moves marked as intended: merge adds the file's marks, replace takes the file's (none if it has none).
-  const marks = Array.isArray(backup?.settings?.intended) ? backup.settings.intended.filter((x) => typeof x === 'string') : null;
-  if (backup) {
-    if (mode === 'replace') saveIntended(storage, user, marks ?? []);
-    else if (marks?.length) saveIntended(storage, user, [...loadIntended(storage, user), ...marks]);
   }
 
   const options = backup?.settings?.analysisOptions;

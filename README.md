@@ -175,7 +175,7 @@ Check it works: `printf 'uci\nquit\n' | tools/stockfish/stockfish` should print 
 | `--all` | off | all games (ignores `--max-games`) |
 | `--since YYYY-MM-DD` | none | only games on or after this date |
 | `--max-moves N` | `12` | scan your first N moves |
-| `--book-moves N` | `5` | within your first N moves, a move that reaches a named gambit position is not judged; `0` judges every move |
+| `--book-moves N` | `10` | within your first N moves, gambit moves (see below) are not judged; `0` judges every move |
 | `--threshold CP` | `20` | loss in centipawns that counts as a mistake |
 | `--depth N` | `18` | Stockfish search depth |
 
@@ -185,23 +185,29 @@ Check it works: `printf 'uci\nquit\n' | tools/stockfish/stockfish` should print 
 
 For each of your moves: loss = eval(best move) − eval(your move), both from your side, clamped at 0.
 Positions already decided (|eval| > 300 cp) are skipped. The first move with a loss of at least
-the threshold is the game's mistake; the rest of the game is ignored.
-
-Moves played on purpose are not judged, and the scan goes on to the next move:
-
-- **Gambits.** Within your first `--book-moves` moves (default 5), a move that reaches the final position
-  of a Lichess opening line whose name contains "Gambit" (Englund, Stafford, Evans, King's Gambit, …).
-  The data is [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) (CC0), vendored
-  in `web/vendor/chess-openings@a6189a3/`. Only final positions count: "Damiano Defense, Damiano Gambit"
-  passes 2...f6, which stays a mistake.
-- **Moves you marked as intended** in the browser trainer ("… is intended"). The mark is stored in the
-  browser (and in its backups); the command line does not read it.
-
-The trainer sorts the list by how often you went wrong in a position (default), by score
-(wrong × average loss) or by average loss. Positions are grouped by the
+the threshold is the game's mistake; the rest of the game is ignored. Positions are grouped by the
 first four FEN fields, so move counters don't split them. For ranking, each loss is capped at
 500 cp. The accepted answers come from one MultiPV-5 search: its top line plus every move within
 the threshold of it, minus the moves you were marked wrong for.
+
+**Gambits are not mistakes.** Within your first `--book-moves` moves (default 10), a move that reaches a
+position of the gambit book is not judged, and the scan goes on to the next move. The book
+(`web/book/gambits.json`) is built from the Lichess opening list
+([lichess-org/chess-openings](https://github.com/lichess-org/chess-openings), CC0, vendored in
+`web/vendor/chess-openings@a6189a3/`) and holds:
+
+- **named gambits:** the last move of every line whose name contains "Gambit" (Englund, Stafford, Evans,
+  King's Gambit, Smith-Morra, …);
+- **sacrifices that are not called gambits:** in any named line that ends with one side 1 to 3 points of
+  material down once the hanging captures are played out, that side's moves from the sacrifice on
+  (Fried Liver 6.Nxf7, Halloween 4.Nxe5, Traxler 4...Bc5, Marshall 8...d5). Lines ending in mate are traps
+  and stay out.
+
+Real mistakes that merely have a name stay mistakes: the Damiano Defense 2...f6 and the Wayward Queen
+2.Qh5 are judged. After a change of the rule, `uv run python tools/make_fixture.py` rebuilds the book.
+
+The trainer sorts the list by how often you went wrong in a position (default), by score
+(wrong × average loss) or by average loss.
 
 ## Data
 

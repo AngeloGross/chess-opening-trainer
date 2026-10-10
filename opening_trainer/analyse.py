@@ -51,7 +51,7 @@ def analyse_moves(
 ) -> GameResult:
     """Scan the player's first `max_moves` moves for the first loss >= threshold.
 
-    Moves `skip` says are played on purpose (gambit book, marked as intended) are not judged.
+    Moves that reach a gambit book position (`skip`) are not judged.
     """
     board = chess.Board()
     result = GameResult(color=color)
@@ -70,7 +70,7 @@ def analyse_moves(
         fen = board.fen()
         key = fen_key(fen)
         result.reached.append(key)
-        if skip.skips(board, move, key):
+        if skip.skips(board, move):
             board.push(move)
             continue
         best, eval_best = engine.evaluate(fen)

@@ -40,7 +40,6 @@ import { mountDataPanel } from './dataPanel.js';
 import { EnginePool, defaultWorkerCount } from './engine/pool.js';
 import { applyImport, importMarkerName } from './store/backupStore.js';
 import { getPositions, getSetting, openDb, requestPersistence, setSetting, userIdOf } from './store/db.js';
-import { loadIntended } from './core/trainerList.js';
 import { mountTrainer } from './trainer.js';
 import { createWakeLock } from './wakeLock.js';
 
@@ -627,15 +626,14 @@ async function run(user, options) {
     await setSetting(db, importMarkerName(name), null); // the analysis below replaces an imported document
     $('name').value = name;
 
-    // Gambit book (vendored, same origin) and the moves this user marked as intended: neither is judged.
+    // Gambit book (same origin): moves that reach one of its positions in the opening are not judged.
     const book = await loadGambitBook();
-    const intended = loadIntended(localStorage, name);
-    note('skip', { book: book.size, intended: intended.size });
+    note('book', { positions: book.size });
 
     ensurePool(cal.workers);
     const co = (app.coordinator = new Coordinator({
       db, pool, user: name,
-      options: { maxGames: options.maxGames, depth: options.depth, maxMoves: options.maxMoves, book, intended,
+      options: { maxGames: options.maxGames, depth: options.depth, maxMoves: options.maxMoves, book,
         multipv: DEFAULTS.multipv, lazyTop: LAZY_TOP },
       onProgress: (p) => {
         showAnalysisProgress(p);

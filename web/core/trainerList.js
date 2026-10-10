@@ -1,8 +1,7 @@
-// Pure list logic of the trainer (trainer.js): filters, sort orders, moves marked as intended, the opening
-// filter's counts, the per-user stats key, and how a new positions document merges into the list that is
-// on screen (design §8: the list grows at every checkpoint while the friend trains).
+// Pure list logic of the trainer (trainer.js): filters, sort orders, the opening filter's counts, the per-user
+// stats key, and how a new positions document merges into the list that is on screen (design §8: the list
+// grows at every checkpoint while the friend trains).
 
-import { intendedId } from './book.js';
 import { userIdOf } from '../store/db.js';
 
 /** The stats key of the CLI-only page, before stats were kept per user (design §5). */
@@ -45,30 +44,22 @@ export function loadStats(storage, user, { migrateLegacy = false } = {}) {
 }
 
 /**
- * @typedef {{opening: string, color: string, unsolved: boolean, intended?: boolean}} Filters  '' = any;
- *   intended: also list positions whose usual move is marked as intended
+ * @typedef {{opening: string, color: string, unsolved: boolean}} Filters  '' = any
  * @typedef {{key: string, opening: string, orientation: string}} Position  (the rest of a positions.json entry)
  */
 
-const never = () => false;
-
-/**
- * @param {Position} pos @param {Filters} f @param {(pos: Position) => boolean} isSolved
- * @param {(pos: Position) => boolean} [isIntended]
- */
-export function matches(pos, f, isSolved, isIntended = never) {
-  return (!f.opening || pos.opening === f.opening) && (!f.color || pos.orientation === f.color) && (!f.unsolved || !isSolved(pos))
-    && (!!f.intended || !isIntended(pos));
+/** @param {Position} pos @param {Filters} f @param {(pos: Position) => boolean} isSolved */
+export function matches(pos, f, isSolved) {
+  return (!f.opening || pos.opening === f.opening) && (!f.color || pos.orientation === f.color) && (!f.unsolved || !isSolved(pos));
 }
 
 /**
  * @template {Position} P
  * @param {P[]} positions @param {Filters} filters @param {(pos: P) => boolean} isSolved
- * @param {(pos: P) => boolean} [isIntended]
  * @returns {P[]}
  */
-export function filterPositions(positions, filters, isSolved, isIntended = never) {
-  return positions.filter((p) => matches(p, filters, isSolved, isIntended));
+export function filterPositions(positions, filters, isSolved) {
+  return positions.filter((p) => matches(p, filters, isSolved));
 }
 
 // ---------- sort orders ----------
@@ -112,62 +103,6 @@ export function loadSort(storage) {
   }
 }
 
-// ---------- moves marked as intended ----------
-
-/**
- * localStorage key of one user's moves marked as intended (core/book.js intendedId values), next to the stats:
- * `opening-trainer:intended:<userId>`.
- * @param {string|undefined|null} user
- */
-export const intendedKeyFor = (user) => `opening-trainer:intended:${userIdOf(user ?? '')}`;
-
-/**
- * @param {Pick<Storage, 'getItem'>|null|undefined} storage @param {string|undefined|null} user
- * @returns {Set<string>}
- */
-export function loadIntended(storage, user) {
-  try {
-    const list = JSON.parse(storage.getItem(intendedKeyFor(user)) ?? '[]');
-    return new Set(Array.isArray(list) ? list.filter((x) => typeof x === 'string') : []);
-  } catch {
-    return new Set(); // storage blocked or unreadable
-  }
-}
-
-/**
- * @param {Pick<Storage, 'setItem'|'removeItem'>|null|undefined} storage @param {string|undefined|null} user
- * @param {Iterable<string>} intended
- */
-export function saveIntended(storage, user, intended) {
-  const list = [...new Set(intended)].sort();
-  try {
-    if (list.length) storage.setItem(intendedKeyFor(user), JSON.stringify(list));
-    else storage.removeItem(intendedKeyFor(user));
-  } catch {
-    // storage blocked: the marks last for this page view
-  }
-}
-
-/**
- * The move a position's "intended" mark is about: the move played there most often.
- * @param {{key: string, played?: Array<{uci: string, san: string}>}} pos
- * @returns {{id: string, san: string}|null}
- */
-export function usualMove(pos) {
-  const usual = pos.played?.[0];
-  return usual ? { id: intendedId(pos.key, usual.uci), san: usual.san } : null;
-}
-
-/**
- * Whether the usual move of `pos` is marked as intended. Such a position is listed only on request until
- * the next analysis, which skips the move and finds the next mistake of those games instead.
- * @param {any} pos @param {Set<string>} intended
- */
-export function isIntendedIn(pos, intended) {
-  const usual = usualMove(pos);
-  return !!usual && intended.has(usual.id);
-}
-
 /**
  * Openings with their position counts, most positions first, then by name.
  * @param {Position[]} positions
@@ -187,15 +122,14 @@ export function openingCounts(positions) {
  * - the current position stays current (found by key). If the new document no longer has it, the old
  *   entry is kept at its old place so an attempt in progress can finish.
  * @template {Position} P
- * @param {{positions: P[], filters: Filters, isSolved: (pos: P) => boolean, isIntended?: (pos: P) => boolean,
- *   filtered: P[], index: number}} p
+ * @param {{positions: P[], filters: Filters, isSolved: (pos: P) => boolean, filtered: P[], index: number}} p
  *   `filtered` and `index` describe the list before the update (index of the current entry, -1 for none)
  * @returns {{filtered: P[], index: number}} index -1 when there is no current entry
  */
-export function mergeList({ positions, filters, isSolved, isIntended = never, filtered, index }) {
+export function mergeList({ positions, filters, isSolved, filtered, index }) {
   const current = index >= 0 ? filtered[index] : undefined;
   const listed = new Set(filtered.map((p) => p.key));
-  const next = positions.filter((p) => listed.has(p.key) || matches(p, filters, isSolved, isIntended));
+  const next = positions.filter((p) => listed.has(p.key) || matches(p, filters, isSolved));
   if (!current) return { filtered: next, index: next.length ? 0 : -1 };
   let at = next.findIndex((p) => p.key === current.key);
   if (at < 0) {

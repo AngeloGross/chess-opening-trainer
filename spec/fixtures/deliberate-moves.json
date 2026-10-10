@@ -5,8 +5,7 @@
   "the next real mistake of that game is found (Englund: 2...Nc6? after the book 1...e5)",
   "a book move beyond book_moves is judged like any other (Evans 4.b4 with book_moves 3)",
   "a move not in the book is judged (Damiano 2...f6)",
-  "a move marked as intended is not judged at any move number; skipped positions still count as reached",
-  "an intended mark is per position: the same move elsewhere is judged"
+  "skipped positions still count as reached"
  ],
  "user": "AngelOgro",
  "settings": {
@@ -137,68 +136,6 @@
     "name": "Damiano Defense",
     "ply": 2
    }
-  },
-  {
-   "id": "delibe05",
-   "rated": true,
-   "variant": "standard",
-   "speed": "blitz",
-   "perf": "blitz",
-   "createdAt": 1791441724876,
-   "status": "resign",
-   "players": {
-    "white": {
-     "user": {
-      "name": "AngelOgro",
-      "id": "angelogro"
-     },
-     "rating": 2000
-    },
-    "black": {
-     "user": {
-      "name": "opponent",
-      "id": "opponent"
-     },
-     "rating": 2000
-    }
-   },
-   "moves": "e4 e5 Qh5 Nc6 Bc4",
-   "opening": {
-    "eco": "C20",
-    "name": "Wayward Queen Attack",
-    "ply": 2
-   }
-  },
-  {
-   "id": "delibe06",
-   "rated": true,
-   "variant": "standard",
-   "speed": "blitz",
-   "perf": "blitz",
-   "createdAt": 1791441124876,
-   "status": "resign",
-   "players": {
-    "white": {
-     "user": {
-      "name": "AngelOgro",
-      "id": "angelogro"
-     },
-     "rating": 2000
-    },
-    "black": {
-     "user": {
-      "name": "opponent",
-      "id": "opponent"
-     },
-     "rating": 2000
-    }
-   },
-   "moves": "e4 c5 Qh5",
-   "opening": {
-    "eco": "B20",
-    "name": "Sicilian Defense",
-    "ply": 2
-   }
   }
  ],
  "fakeEngine": {
@@ -246,22 +183,6 @@
    "f3e5",
    120
   ],
-  "rnbqkbnr/pppp1ppp/8/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq -": [
-   "b8c6",
-   -10
-  ],
-  "r1bqkbnr/pppp1ppp/2n5/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq -": [
-   "f1c4",
-   30
-  ],
-  "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -": [
-   "g1f3",
-   30
-  ],
-  "rnbqkbnr/pp1ppppp/8/2p4Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq -": [
-   "g8f6",
-   20
-  ],
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -": [
    "e2e4",
    30
@@ -278,10 +199,7 @@
    "rnbqkbnr/pppp1ppp/8/4p3/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -",
    "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq -"
   ],
-  "book_moves": 3,
-  "intended": [
-   "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -|d1h5"
-  ]
+  "book_moves": 3
  },
  "expected": {
   "results": [
@@ -369,42 +287,6 @@
      "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -",
      "rnbqkbnr/pppp2pp/5p2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq -"
     ]
-   },
-   {
-    "color": "white",
-    "reached": [
-     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
-     "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
-     "r1bqkbnr/pppp1ppp/2n5/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq -"
-    ],
-    "mistake": null,
-    "evaluated": [
-     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
-     "r1bqkbnr/pppp1ppp/2n5/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq -"
-    ]
-   },
-   {
-    "color": "white",
-    "reached": [
-     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
-     "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -"
-    ],
-    "mistake": {
-     "fen": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
-     "key": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
-     "ply": 2,
-     "played": "d1h5",
-     "played_san": "Qh5",
-     "best": "g1f3",
-     "best_san": "Nf3",
-     "loss": 50,
-     "eval_best": 30
-    },
-    "evaluated": [
-     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
-     "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
-     "rnbqkbnr/pp1ppppp/8/2p4Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq -"
-    ]
    }
   ],
   "positions": [
@@ -433,33 +315,6 @@
     "opening": "Damiano Defense",
     "games": [
      "https://lichess.org/delibe04/black#3"
-    ]
-   },
-   {
-    "key": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
-    "fen": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
-    "orientation": "white",
-    "errors": 1,
-    "reached": 1,
-    "avg_loss": 50.0,
-    "raw_avg_loss": 50.0,
-    "score": 50.0,
-    "best": "g1f3",
-    "best_san": "Nf3",
-    "acceptable": [
-     "g1f3"
-    ],
-    "played": [
-     {
-      "uci": "d1h5",
-      "san": "Qh5",
-      "count": 1
-     }
-    ],
-    "eco": "B20",
-    "opening": "Sicilian Defense",
-    "games": [
-     "https://lichess.org/delibe06#2"
     ]
    },
    {
@@ -520,19 +375,15 @@
   "progress": [
    [
     1,
-    4
+    3
    ],
    [
     2,
-    4
+    3
    ],
    [
     3,
-    4
-   ],
-   [
-    4,
-    4
+    3
    ]
   ]
  }
