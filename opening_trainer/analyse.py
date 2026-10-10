@@ -51,7 +51,8 @@ def analyse_moves(
 ) -> GameResult:
     """Scan the player's first `max_moves` moves for the first loss >= threshold.
 
-    Moves that reach a gambit book position (`skip`) are not judged.
+    Moves that reach a gambit book position (`skip`) are not judged, and a loss that is an opening
+    choice (`Skip.opening_choice`) is not a mistake.
     """
     board = chess.Board()
     result = GameResult(color=color)
@@ -64,7 +65,8 @@ def analyse_moves(
         if board.turn != color:
             board.push(move)
             continue
-        if board.fullmove_number > max_moves:
+        before_fullmove = board.fullmove_number
+        if before_fullmove > max_moves:
             break
 
         fen = board.fen()
@@ -79,7 +81,7 @@ def analyse_moves(
             board.push(move)
             _, eval_after = engine.evaluate(board.fen())
             loss = max(0, eval_best - (-eval_after))
-            if loss >= threshold:
+            if loss >= threshold and not skip.opening_choice(before_fullmove, color, -eval_after):
                 before = chess.Board(fen)
                 result.mistake = Mistake(
                     fen=fen,

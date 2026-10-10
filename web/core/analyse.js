@@ -2,7 +2,7 @@
 // Pure logic: the evaluator is injected and only needs `evaluate(fen) -> Promise<[bestUci|null, cp]>`,
 // with cp from the side to move's point of view.
 import { Chess } from '../vendor/chess.js@1.4.0/dist/esm/chess.js';
-import { NO_SKIP, skips } from './book.js';
+import { NO_SKIP, openingChoice, skips } from './book.js';
 import { fenKey } from './fen.js';
 
 export const DECIDED_CP = 300;
@@ -88,7 +88,7 @@ export async function analyseMoves(sans, color, engine, maxMoves = 12, threshold
     if (best !== null && Math.abs(evalBest) <= DECIDED_CP && played !== best) {
       const [, evalAfter] = await engine.evaluate(board.fen()); // the move is already on the board
       const loss = Math.max(0, evalBest - -evalAfter);
-      if (loss >= threshold) {
+      if (loss >= threshold && !openingChoice(skip, fullmove, color, -evalAfter)) {
         result.mistake = {
           fen, key, ply, played, playedSan: san, best, bestSan: sanOf(fen, best), loss, evalBest,
         };

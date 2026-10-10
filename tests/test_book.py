@@ -79,3 +79,13 @@ def test_book_id_is_checked(tmp_path):
     with pytest.raises(ValueError, match="make_fixture"):
         load_book(path)
     assert BOOK_ID in BOOK_PATH.read_text(encoding="utf-8")
+
+
+def test_opening_choice_floor_per_colour():
+    skip = Skip(opening_moves=3, opening_floor=20)
+    assert skip.opening_choice(2, chess.WHITE, -20)
+    assert not skip.opening_choice(2, chess.WHITE, -21)
+    assert skip.opening_choice(3, chess.BLACK, -50)  # Black starts about 30 cp behind
+    assert not skip.opening_choice(3, chess.BLACK, -51)
+    assert not skip.opening_choice(4, chess.WHITE, 100)  # beyond opening_moves
+    assert not Skip().opening_choice(1, chess.WHITE, 100)  # off by default

@@ -31,6 +31,9 @@ SOURCE_DIR = WEB_DIR / "vendor" / "chess-openings@a6189a3"
 SOURCE_FILES = ("a.tsv", "b.tsv", "c.tsv", "d.tsv", "e.tsv")
 BOOK_PATH = WEB_DIR / "book" / "gambits.json"
 DEFAULT_BOOK_MOVES = 10
+DEFAULT_OPENING_MOVES = 3
+DEFAULT_OPENING_FLOOR = 20
+BLACK_EDGE = 30  # White's usual edge after the first move (the start position is about +30 cp)
 MAX_DEFICIT = 3  # a piece for a pawn is 2; more than 3 is a trap or a blunder line, not a gambit
 QUIESCENCE_PLIES = 8
 VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 0}
@@ -133,8 +136,18 @@ def load_book(path: Path = BOOK_PATH) -> frozenset[str]:
 
 @dataclass(frozen=True)
 class Skip:
+    """Moves played on purpose: gambit book moves, and opening choices.
+
+    An opening choice is a move within the first `opening_moves` moves after which the position is still
+    no worse than -`opening_floor` cp for White, or -(`opening_floor` + BLACK_EDGE) cp for Black, who
+    starts about BLACK_EDGE cp behind. 1. d4 d6 2. c4 costs ~20 cp against the engine's best move but
+    keeps White ahead: a repertoire choice, not a mistake.
+    """
+
     book: frozenset[str] = frozenset()
     book_moves: int = DEFAULT_BOOK_MOVES
+    opening_moves: int = 0
+    opening_floor: int = DEFAULT_OPENING_FLOOR
 
     def skips(self, board: chess.Board, move: chess.Move) -> bool:
         """Whether the player's `move` in `board` (not yet pushed) reaches a book position in time."""
@@ -146,5 +159,10 @@ class Skip:
         finally:
             board.pop()
 
+    def opening_choice(self, fullmove: int, color: chess.Color, eval_after: int) -> bool:
+        """Whether a move at `fullmove` that leaves the player at `eval_after` cp (his side) is an opening choice."""
+        floor = -self.opening_floor - (0 if color == chess.WHITE else BLACK_EDGE)
+        return fullmove <= self.opening_moves and eval_after >= floor
 
-NO_SKIP = Skip()
+
+NO_SKIP = Skip()  # no book and no opening choices: the CLI and the browser pass their defaults explicitly

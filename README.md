@@ -175,6 +175,8 @@ Check it works: `printf 'uci\nquit\n' | tools/stockfish/stockfish` should print 
 | `--all` | off | all games (ignores `--max-games`) |
 | `--since YYYY-MM-DD` | none | only games on or after this date |
 | `--max-moves N` | `12` | scan your first N moves |
+| `--opening-moves N` | `3` | within your first N moves, a move that leaves you no worse than `--opening-floor` is an opening choice, not a mistake; `0` turns this off |
+| `--opening-floor CP` | `20` | how far behind you may be after an opening choice as White; Black gets 30 cp more |
 | `--book-moves N` | `10` | within your first N moves, gambit moves (see below) are not judged; `0` judges every move |
 | `--threshold CP` | `20` | loss in centipawns that counts as a mistake |
 | `--depth N` | `18` | Stockfish search depth |
@@ -189,6 +191,12 @@ the threshold is the game's mistake; the rest of the game is ignored. Positions 
 first four FEN fields, so move counters don't split them. For ranking, each loss is capped at
 500 cp. The accepted answers come from one MultiPV-5 search: its top line plus every move within
 the threshold of it, minus the moves you were marked wrong for.
+
+**Opening choices are not mistakes.** In your first `--opening-moves` moves (default 3), a move that
+costs the threshold or more is still fine if the position after it is no worse than -0.2 for White
+(`--opening-floor 20`) or -0.5 for Black (Black starts about 0.3 behind). 1. d4 d6 2. c4 costs about
+20 cp against 2. Nf3 or 2. e4, but White is still ahead: that is a repertoire choice. 2...f6 or a lost
+pawn stays a mistake.
 
 **Gambits are not mistakes.** Within your first `--book-moves` moves (default 10), a move that reaches a
 position of the gambit book is not judged, and the scan goes on to the next move. The book

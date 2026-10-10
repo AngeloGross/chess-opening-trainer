@@ -24,7 +24,7 @@
 
 import { aggregate } from '../core/aggregate.js';
 import { analyseGame } from '../core/analyse.js';
-import { BOOK_ID, DEFAULT_BOOK_MOVES } from '../core/book.js';
+import { BOOK_ID, DEFAULT_BOOK_MOVES, DEFAULT_OPENING_FLOOR, DEFAULT_OPENING_MOVES } from '../core/book.js';
 import { fenKey } from '../core/fen.js';
 import { isSupported } from '../core/fetchPlan.js';
 import { EngineAnalysisError, MULTIPV, isMobile, terminalLines } from '../engine/pool.js';
@@ -44,6 +44,9 @@ const RUN_KEY_VERSION = 'runKey/3';
  * @property {number|null} maxGames  most recent N games; null = all
  * @property {number} maxMoves
  * @property {number} bookMoves  within the first N moves a move reaching a `book` position is not judged
+ * @property {number} openingMoves  within the first N moves a loss that leaves the player no worse than
+ *   -openingFloor cp (Black: 30 cp more) is an opening choice (core/book.js openingChoice); 0 = off
+ * @property {number} openingFloor
  * @property {Set<string>} book  gambit book (core/book.js loadGambitBook); empty = no book
  * @property {number} threshold
  * @property {number} depth
@@ -71,6 +74,8 @@ export function defaultOptions(nav = globalThis.navigator ?? {}) {
     maxGames: mobile ? 150 : 500,
     maxMoves: 12,
     bookMoves: DEFAULT_BOOK_MOVES,
+    openingMoves: DEFAULT_OPENING_MOVES,
+    openingFloor: DEFAULT_OPENING_FLOOR,
     book: new Set(),
     threshold: 20,
     depth: mobile ? 12 : 14,
@@ -106,17 +111,18 @@ export function fnv1a64(text) {
 /**
  * Identity of one analysis run: results of a run are only reused by a run with the same key.
  * runKey = "r3-" + fnv1a64(JSON.stringify(["runKey/3", userId, sortedUniquePerfs, maxMoves, threshold, depth, engineId,
- *   bookId, bookMoves])) where userId is the lower-cased name and bookId is BOOK_ID, or null when no book is used
+ *   bookId, bookMoves, openingMoves, openingFloor])) where userId is the lower-cased name and bookId is BOOK_ID, or null when no book is used
  * (then bookMoves is 0). `since` and `maxGames` only select games, so they are not part of it: a larger game
  * count reuses every finished game.
  * @param {{user: string, perfs: string[], maxMoves: number, threshold: number, depth: number, engineId: string,
- *   bookMoves?: number, book?: Set<string>}} p
+ *   bookMoves?: number, book?: Set<string>, openingMoves?: number, openingFloor?: number}} p
  * @returns {string}
  */
-export function runKeyOf({ user, perfs, maxMoves, threshold, depth, engineId, bookMoves = 0, book = new Set() }) {
+export function runKeyOf({ user, perfs, maxMoves, threshold, depth, engineId, bookMoves = 0, book = new Set(),
+  openingMoves = 0, openingFloor = DEFAULT_OPENING_FLOOR }) {
   const useBook = book.size > 0 && bookMoves > 0;
   const canonical = JSON.stringify([RUN_KEY_VERSION, userIdOf(user), [...new Set(perfs)].sort(), maxMoves, threshold, depth, engineId,
-    useBook ? BOOK_ID : null, useBook ? bookMoves : 0]);
+    useBook ? BOOK_ID : null, useBook ? bookMoves : 0, openingMoves, openingMoves ? openingFloor : 0]);
   return `r3-${fnv1a64(canonical)}`;
 }
 
@@ -226,8 +232,9 @@ export class Coordinator {
   init() {
     this._initialised ??= (async () => {
       this.engineId = await this.pool.ready();
-      const { perfs, maxMoves, threshold, depth, bookMoves, book } = this.opts;
-      this.runKey = runKeyOf({ user: this.user, perfs, maxMoves, threshold, depth, engineId: this.engineId, bookMoves, book });
+      const { perfs, maxMoves, threshold, depth, bookMoves, book, openingMoves, openingFloor } = this.opts;
+      this.runKey = runKeyOf({ user: this.user, perfs, maxMoves, threshold, depth, engineId: this.engineId, bookMoves, book,
+        openingMoves, openingFloor });
       Object.assign(this.progress, { engineId: this.engineId, runKey: this.runKey });
     })();
     return this._initialised;
@@ -472,8 +479,8 @@ export class Coordinator {
   async _game(game) {
     let res;
     try {
-      const { maxMoves, threshold, book, bookMoves } = this.opts;
-      res = await analyseGame(game, this.user, this.evaluator, maxMoves, threshold, { book, bookMoves });
+      const { maxMoves, threshold, book, bookMoves, openingMoves, openingFloor } = this.opts;
+      res = await analyseGame(game, this.user, this.evaluator, maxMoves, threshold, { book, bookMoves, openingMoves, openingFloor });
     } catch (err) {
       if (!(err instanceof StoppedError)) this._fail(err);
       return; // not finished: no result row, so a later run analyses it again
@@ -562,7 +569,7 @@ export class Coordinator {
       for (const e of entries.slice(0, this.opts.lazyTop)) this._queueMultipv(e.fen);
     }
     if (!pairs.length) return; // like the CLI: nothing of his analysed yet, keep any earlier document
-    const { perfs, maxMoves, threshold, depth, bookMoves, book } = this.opts;
+    const { perfs, maxMoves, threshold, depth, bookMoves, book, openingMoves, openingFloor } = this.opts;
     const useBook = book.size > 0 && bookMoves > 0;
     this.doc = {
       generated: generatedAt(this.now()),
@@ -570,7 +577,7 @@ export class Coordinator {
       games: pairs.length,
       clean_games: pairs.filter(([, r]) => r.mistake === null).length,
       settings: { perf: [...perfs], max_moves: maxMoves, threshold, depth, engine: this.engineId,
-        book_moves: useBook ? bookMoves : 0, book: useBook ? BOOK_ID : null },
+        book_moves: useBook ? bookMoves : 0, book: useBook ? BOOK_ID : null, opening_moves: openingMoves, opening_floor: openingFloor },
       positions: entries,
     };
     await putPositions(this.db, this.userId, this.doc);

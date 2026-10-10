@@ -11,7 +11,7 @@ const DIR = new URL('../spec/fixtures/', import.meta.url);
 const fixture = (name) => JSON.parse(readFileSync(new URL(`${name}.json`, DIR), 'utf8'));
 const FIXTURES = ['accept-window', 'black-side', 'clean-games', 'colour-and-urls', 'corrupt-moves', 'decided-position',
   'en-passant', 'loss-cap-ranking', 'mate-scores', 'max-moves', 'mistake-found', 'only-first-mistake',
-  'repeated-position', 'rounding-ties', 'tie-breaks', 'deliberate-moves'];
+  'repeated-position', 'rounding-ties', 'tie-breaks', 'deliberate-moves', 'opening-choices'];
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -58,7 +58,8 @@ async function dbWith(games, user) {
 }
 
 function options(fx, extra = {}) {
-  const skip = fx.skip ? { book: new Set(fx.skip.book), bookMoves: fx.skip.book_moves } : {};
+  const skip = fx.skip ? { book: new Set(fx.skip.book ?? []), bookMoves: fx.skip.book_moves ?? 0, openingMoves: fx.skip.opening_moves ?? 0,
+      openingFloor: fx.skip.opening_floor ?? 20 } : { openingMoves: 0 };
   return {
     perfs: ['blitz'], since: null, maxGames: null, maxMoves: fx.settings.max_moves, threshold: fx.settings.threshold,
     depth: 14, multipv: 'eager', flushMs: 1, ...skip, ...extra,
@@ -78,7 +79,7 @@ describe('selectGames and defaults', () => {
 
   it('defaults per device: desktop eager d14/500, mobile lazy top-30 d12/150', () => {
     const desktop = defaultOptions({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0.0.0' });
-    expect(desktop).toMatchObject({ mobile: false, depth: 14, maxGames: 500, multipv: 'eager', maxMoves: 12, bookMoves: 10, threshold: 20 });
+    expect(desktop).toMatchObject({ mobile: false, depth: 14, maxGames: 500, multipv: 'eager', maxMoves: 12, bookMoves: 10, openingMoves: 3, openingFloor: 20, threshold: 20 });
     expect(desktop.perfs).toEqual(['blitz', 'rapid', 'classical']);
     const phone = defaultOptions({ userAgent: 'Mozilla/5.0 (Linux; Android 14) Mobile Safari/537.36' });
     expect(phone).toMatchObject({ mobile: true, depth: 12, maxGames: 150, multipv: 'lazy', lazyTop: 30 });
@@ -102,6 +103,14 @@ describe('runKey', () => {
     const withBook = runKeyOf({ ...base, book: new Set(['x']), bookMoves: 5 });
     expect(withBook).not.toBe(key);
     expect(runKeyOf({ ...base, book: new Set(['x']), bookMoves: 4 })).not.toBe(withBook);
+  });
+
+  it('opening choices are part of it; the floor only counts when they are on', () => {
+    const key = runKeyOf(base);
+    expect(runKeyOf({ ...base, openingFloor: 30 })).toBe(key);
+    const on = runKeyOf({ ...base, openingMoves: 3 });
+    expect(on).not.toBe(key);
+    expect(runKeyOf({ ...base, openingMoves: 3, openingFloor: 30 })).not.toBe(on);
   });
 
   it('changes with every analysis setting and the engine', () => {
@@ -130,7 +139,8 @@ describe('coordinator on the shared fixtures', () => {
       expect(doc.games).toBe(analysed.length);
       expect(doc.clean_games).toBe(analysed.filter((r) => r.mistake === null).length);
       const book = fx.skip?.book?.length && fx.skip.book_moves ? { book_moves: fx.skip.book_moves, book: 'chess-openings@a6189a3/gambits-2' } : { book_moves: 0, book: null };
-      expect(doc.settings).toEqual({ perf: ['blitz'], max_moves: fx.settings.max_moves, threshold: fx.settings.threshold, depth: 14, engine: 'Fake Engine 1', ...book });
+      const opening = { opening_moves: fx.skip?.opening_moves ?? 0, opening_floor: fx.skip?.opening_floor ?? 20 };
+      expect(doc.settings).toEqual({ perf: ['blitz'], max_moves: fx.settings.max_moves, threshold: fx.settings.threshold, depth: 14, engine: 'Fake Engine 1', ...book, ...opening });
       expect(Object.keys(doc)).toEqual(['generated', 'user', 'games', 'clean_games', 'settings', 'positions']);
       expect(doc.generated).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00$/);
       expect(await getPositions(db, fx.user)).toEqual(doc);

@@ -426,10 +426,41 @@ def deliberate_moves():
     ], g, engine, skip=skip)
 
 
+def opening_choices():
+    g = Games("choice")
+    w = {"white": USER, "black": "opponent"}
+    b = {"white": "opponent", "black": USER}
+    g.add("d4 d6 c4 e5 Nc3", **w, opening=("A40", "Queen's Pawn Game: Anglo-Slav Opening"))
+    g.add("d4 d6 c4 e5 Nc3 Nc6 Qd3 Nf6", **w, opening=("A40", "Queen's Pawn Game: Anglo-Slav Opening"))
+    g.add("d4 c6 Nf3 d6 c4", **b, opening=("A40", "Queen's Pawn Game"))
+    g.add("e4 Nc6 d4 f6", **b, opening=("B00", "Nimzowitsch Defense"))
+    g.add("e4 e5 Nf3 d6 d4 f6", **b, opening=("C41", "Philidor Defense"))
+    engine = {
+        key("d4", "d6"): ("g1f3", 51), key("d4", "d6", "c4"): ("e7e5", -31),  # 2.c4 loses 20, White still +31
+        key("d4", "d6", "c4", "e5"): ("g1f3", 45), key("d4", "d6", "c4", "e5", "Nc3"): ("b8c6", -25),
+        key("d4", "d6", "c4", "e5", "Nc3", "Nc6"): ("d4d5", 40),
+        key("d4", "d6", "c4", "e5", "Nc3", "Nc6", "Qd3"): ("e5d4", 10),  # 4.Qd3 loses 50: move 4 > 3
+        key("d4"): ("d7d5", 30), key("d4", "c6"): ("c2c4", 35),
+        key("d4", "c6", "Nf3"): ("d7d5", -35), key("d4", "c6", "Nf3", "d6"): ("c2c4", 60),  # 2...d6 loses 25, at -60
+        key("e4"): ("e7e5", -30), key("e4", "Nc6"): ("d2d4", 50),  # 1...Nc6 loses 20 to -50: a choice (inclusive)
+        key("e4", "Nc6", "d4"): ("d7d5", -45), key("e4", "Nc6", "d4", "f6"): ("g1f3", 60),  # loss 15: no mistake
+        key("e4", "e5", "Nf3"): ("b8c6", -30), key("e4", "e5", "Nf3", "d6"): ("d2d4", 45),  # 2...d6 loses 15
+        key("e4", "e5", "Nf3", "d6", "d4"): ("e5d4", -45), key("e4", "e5", "Nf3", "d6", "d4", "f6"): ("d4e5", 150),
+    }
+    return fixture("opening-choices", [
+        "a loss of threshold or more within opening_moves is an opening choice if the player is still no worse "
+        "than -opening_floor (White, 1. d4 d6 2. c4 at +31) or -(opening_floor + 30) (Black)",
+        "the scan goes on and finds a later real mistake (4.Qd3 at move 4 > opening_moves 3)",
+        "Black: 1...Nc6 losing 20 to exactly -50 is a choice (the floor is inclusive)",
+        "Black: 2...d6 losing 25 to -60 is beyond -50 and stays a mistake",
+        "Black: 3...f6 losing 105 to -150 at move 3 stays a mistake",
+    ], g, engine, skip={"opening_moves": 3, "opening_floor": 20})
+
+
 SCENARIOS = [
     mistake_found, only_first_mistake, decided_position, clean_games, max_moves, black_side,
     mate_scores, repeated_position, tie_breaks, loss_cap_ranking, accept_window, colour_and_urls,
-    en_passant, corrupt_moves, rounding_ties, deliberate_moves,
+    en_passant, corrupt_moves, rounding_ties, deliberate_moves, opening_choices,
 ]
 
 

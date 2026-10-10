@@ -9,6 +9,10 @@ import { fenKey } from './fen.js';
 
 export const BOOK_ID = 'chess-openings@a6189a3/gambits-2';
 export const DEFAULT_BOOK_MOVES = 10;
+export const DEFAULT_OPENING_MOVES = 3;
+export const DEFAULT_OPENING_FLOOR = 20;
+/** White's usual edge after the first move (the start position is about +30 cp). */
+export const BLACK_EDGE = 30;
 const BOOK_URL = new URL('../book/gambits.json', import.meta.url);
 
 /**
@@ -41,13 +45,28 @@ export function loadGambitBook(fetchFn = globalThis.fetch) {
 }
 
 /**
+ * Moves played on purpose: gambit book moves, and opening choices (book.py `Skip`).
  * @typedef {object} Skip
  * @property {Set<string>} book
  * @property {number} bookMoves
+ * @property {number} [openingMoves]  0 or missing: no opening choices
+ * @property {number} [openingFloor]
  */
 
-/** @type {Skip} */
-export const NO_SKIP = Object.freeze({ book: new Set(), bookMoves: DEFAULT_BOOK_MOVES });
+/** No book and no opening choices: the CLI and the browser pass their defaults explicitly. @type {Skip} */
+export const NO_SKIP = Object.freeze({ book: new Set(), bookMoves: DEFAULT_BOOK_MOVES, openingMoves: 0, openingFloor: DEFAULT_OPENING_FLOOR });
+
+/**
+ * Whether a loss is an opening choice: a move within the first `openingMoves` moves after which the player is
+ * still no worse than -openingFloor cp as White, or -(openingFloor + BLACK_EDGE) cp as Black, who starts about
+ * BLACK_EDGE cp behind. 1. d4 d6 2. c4 costs ~20 cp against the engine's best move but keeps White ahead.
+ * @param {Skip} skip @param {number} fullmove @param {'white'|'black'} color @param {number} evalAfter  his side
+ * @returns {boolean}
+ */
+export function openingChoice(skip, fullmove, color, evalAfter) {
+  const floor = -(skip.openingFloor ?? DEFAULT_OPENING_FLOOR) - (color === 'white' ? 0 : BLACK_EDGE);
+  return fullmove <= (skip.openingMoves ?? 0) && evalAfter >= floor;
+}
 
 /**
  * Whether the player's move (made at `fullmove`, leading to `fenAfter`) reaches a book position in time.

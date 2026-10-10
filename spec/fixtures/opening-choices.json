@@ -1,0 +1,461 @@
+{
+ "name": "opening-choices",
+ "scenarios": [
+  "a loss of threshold or more within opening_moves is an opening choice if the player is still no worse than -opening_floor (White, 1. d4 d6 2. c4 at +31) or -(opening_floor + 30) (Black)",
+  "the scan goes on and finds a later real mistake (4.Qd3 at move 4 > opening_moves 3)",
+  "Black: 1...Nc6 losing 20 to exactly -50 is a choice (the floor is inclusive)",
+  "Black: 2...d6 losing 25 to -60 is beyond -50 and stays a mistake",
+  "Black: 3...f6 losing 105 to -150 at move 3 stays a mistake"
+ ],
+ "user": "AngelOgro",
+ "settings": {
+  "max_moves": 15,
+  "threshold": 20
+ },
+ "games": [
+  {
+   "id": "choice01",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791444124876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "d4 d6 c4 e5 Nc3",
+   "opening": {
+    "eco": "A40",
+    "name": "Queen's Pawn Game: Anglo-Slav Opening",
+    "ply": 2
+   }
+  },
+  {
+   "id": "choice02",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791443524876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "d4 d6 c4 e5 Nc3 Nc6 Qd3 Nf6",
+   "opening": {
+    "eco": "A40",
+    "name": "Queen's Pawn Game: Anglo-Slav Opening",
+    "ply": 2
+   }
+  },
+  {
+   "id": "choice03",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791442924876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "d4 c6 Nf3 d6 c4",
+   "opening": {
+    "eco": "A40",
+    "name": "Queen's Pawn Game",
+    "ply": 2
+   }
+  },
+  {
+   "id": "choice04",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791442324876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 Nc6 d4 f6",
+   "opening": {
+    "eco": "B00",
+    "name": "Nimzowitsch Defense",
+    "ply": 2
+   }
+  },
+  {
+   "id": "choice05",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791441724876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 e5 Nf3 d6 d4 f6",
+   "opening": {
+    "eco": "C41",
+    "name": "Philidor Defense",
+    "ply": 2
+   }
+  }
+ ],
+ "fakeEngine": {
+  "rnbqkbnr/ppp1pppp/3p4/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -": [
+   "g1f3",
+   51
+  ],
+  "rnbqkbnr/ppp1pppp/3p4/8/2PP4/8/PP2PPPP/RNBQKBNR b KQkq -": [
+   "e7e5",
+   -31
+  ],
+  "rnbqkbnr/ppp2ppp/3p4/4p3/2PP4/8/PP2PPPP/RNBQKBNR w KQkq -": [
+   "g1f3",
+   45
+  ],
+  "rnbqkbnr/ppp2ppp/3p4/4p3/2PP4/2N5/PP2PPPP/R1BQKBNR b KQkq -": [
+   "b8c6",
+   -25
+  ],
+  "r1bqkbnr/ppp2ppp/2np4/4p3/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq -": [
+   "d4d5",
+   40
+  ],
+  "r1bqkbnr/ppp2ppp/2np4/4p3/2PP4/2NQ4/PP2PPPP/R1B1KBNR b KQkq -": [
+   "e5d4",
+   10
+  ],
+  "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -": [
+   "d7d5",
+   30
+  ],
+  "rnbqkbnr/pp1ppppp/2p5/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -": [
+   "c2c4",
+   35
+  ],
+  "rnbqkbnr/pp1ppppp/2p5/8/3P4/5N2/PPP1PPPP/RNBQKB1R b KQkq -": [
+   "d7d5",
+   -35
+  ],
+  "rnbqkbnr/pp2pppp/2pp4/8/3P4/5N2/PPP1PPPP/RNBQKB1R w KQkq -": [
+   "c2c4",
+   60
+  ],
+  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -": [
+   "e7e5",
+   -30
+  ],
+  "r1bqkbnr/pppppppp/2n5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -": [
+   "d2d4",
+   50
+  ],
+  "r1bqkbnr/pppppppp/2n5/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq -": [
+   "d7d5",
+   -45
+  ],
+  "r1bqkbnr/ppppp1pp/2n2p2/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq -": [
+   "g1f3",
+   60
+  ],
+  "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -": [
+   "b8c6",
+   -30
+  ],
+  "rnbqkbnr/ppp2ppp/3p4/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq -": [
+   "d2d4",
+   45
+  ],
+  "rnbqkbnr/ppp2ppp/3p4/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq -": [
+   "e5d4",
+   -45
+  ],
+  "rnbqkbnr/ppp3pp/3p1p2/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R w KQkq -": [
+   "d4e5",
+   150
+  ]
+ },
+ "topMoves": {},
+ "skip": {
+  "opening_moves": 3,
+  "opening_floor": 20
+ },
+ "expected": {
+  "results": [
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp1pppp/3p4/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp2ppp/3p4/4p3/2PP4/8/PP2PPPP/RNBQKBNR w KQkq -"
+    ],
+    "mistake": null,
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp1pppp/3p4/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp1pppp/3p4/8/2PP4/8/PP2PPPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/ppp2ppp/3p4/4p3/2PP4/8/PP2PPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp2ppp/3p4/4p3/2PP4/2N5/PP2PPPP/R1BQKBNR b KQkq -"
+    ]
+   },
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp1pppp/3p4/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp2ppp/3p4/4p3/2PP4/8/PP2PPPP/RNBQKBNR w KQkq -",
+     "r1bqkbnr/ppp2ppp/2np4/4p3/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq -"
+    ],
+    "mistake": {
+     "fen": "r1bqkbnr/ppp2ppp/2np4/4p3/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+     "key": "r1bqkbnr/ppp2ppp/2np4/4p3/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq -",
+     "ply": 6,
+     "played": "d1d3",
+     "played_san": "Qd3",
+     "best": "d4d5",
+     "best_san": "d5",
+     "loss": 50,
+     "eval_best": 40
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp1pppp/3p4/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp1pppp/3p4/8/2PP4/8/PP2PPPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/ppp2ppp/3p4/4p3/2PP4/8/PP2PPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/ppp2ppp/3p4/4p3/2PP4/2N5/PP2PPPP/R1BQKBNR b KQkq -",
+     "r1bqkbnr/ppp2ppp/2np4/4p3/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq -",
+     "r1bqkbnr/ppp2ppp/2np4/4p3/2PP4/2NQ4/PP2PPPP/R1B1KBNR b KQkq -"
+    ]
+   },
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pp1ppppp/2p5/8/3P4/5N2/PPP1PPPP/RNBQKB1R b KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pp1ppppp/2p5/8/3P4/5N2/PPP1PPPP/RNBQKB1R b KQkq - 1 2",
+     "key": "rnbqkbnr/pp1ppppp/2p5/8/3P4/5N2/PPP1PPPP/RNBQKB1R b KQkq -",
+     "ply": 3,
+     "played": "d7d6",
+     "played_san": "d6",
+     "best": "d7d5",
+     "best_san": "d5",
+     "loss": 25,
+     "eval_best": -35
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pp1ppppp/2p5/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pp1ppppp/2p5/8/3P4/5N2/PPP1PPPP/RNBQKB1R b KQkq -",
+     "rnbqkbnr/pp2pppp/2pp4/8/3P4/5N2/PPP1PPPP/RNBQKB1R w KQkq -"
+    ]
+   },
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "r1bqkbnr/pppppppp/2n5/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq -"
+    ],
+    "mistake": null,
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "r1bqkbnr/pppppppp/2n5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "r1bqkbnr/pppppppp/2n5/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq -",
+     "r1bqkbnr/ppppp1pp/2n2p2/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq -"
+    ]
+   },
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -",
+     "rnbqkbnr/ppp2ppp/3p4/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/ppp2ppp/3p4/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 3",
+     "key": "rnbqkbnr/ppp2ppp/3p4/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq -",
+     "ply": 5,
+     "played": "f7f6",
+     "played_san": "f6",
+     "best": "e5d4",
+     "best_san": "exd4",
+     "loss": 105,
+     "eval_best": -45
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -",
+     "rnbqkbnr/ppp2ppp/3p4/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq -",
+     "rnbqkbnr/ppp2ppp/3p4/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq -",
+     "rnbqkbnr/ppp3pp/3p1p2/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R w KQkq -"
+    ]
+   }
+  ],
+  "positions": [
+   {
+    "key": "rnbqkbnr/ppp2ppp/3p4/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq -",
+    "fen": "rnbqkbnr/ppp2ppp/3p4/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 3",
+    "orientation": "black",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 105.0,
+    "raw_avg_loss": 105.0,
+    "score": 105.0,
+    "best": "e5d4",
+    "best_san": "exd4",
+    "acceptable": [
+     "e5d4"
+    ],
+    "played": [
+     {
+      "uci": "f7f6",
+      "san": "f6",
+      "count": 1
+     }
+    ],
+    "eco": "C41",
+    "opening": "Philidor Defense",
+    "games": [
+     "https://lichess.org/choice05/black#5"
+    ]
+   },
+   {
+    "key": "r1bqkbnr/ppp2ppp/2np4/4p3/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq -",
+    "fen": "r1bqkbnr/ppp2ppp/2np4/4p3/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+    "orientation": "white",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 50.0,
+    "raw_avg_loss": 50.0,
+    "score": 50.0,
+    "best": "d4d5",
+    "best_san": "d5",
+    "acceptable": [
+     "d4d5"
+    ],
+    "played": [
+     {
+      "uci": "d1d3",
+      "san": "Qd3",
+      "count": 1
+     }
+    ],
+    "eco": "A40",
+    "opening": "Queen's Pawn Game: Anglo-Slav Opening",
+    "games": [
+     "https://lichess.org/choice02#6"
+    ]
+   },
+   {
+    "key": "rnbqkbnr/pp1ppppp/2p5/8/3P4/5N2/PPP1PPPP/RNBQKB1R b KQkq -",
+    "fen": "rnbqkbnr/pp1ppppp/2p5/8/3P4/5N2/PPP1PPPP/RNBQKB1R b KQkq - 1 2",
+    "orientation": "black",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 25.0,
+    "raw_avg_loss": 25.0,
+    "score": 25.0,
+    "best": "d7d5",
+    "best_san": "d5",
+    "acceptable": [
+     "d7d5"
+    ],
+    "played": [
+     {
+      "uci": "d7d6",
+      "san": "d6",
+      "count": 1
+     }
+    ],
+    "eco": "A40",
+    "opening": "Queen's Pawn Game",
+    "games": [
+     "https://lichess.org/choice03/black#3"
+    ]
+   }
+  ],
+  "progress": [
+   [
+    1,
+    3
+   ],
+   [
+    2,
+    3
+   ],
+   [
+    3,
+    3
+   ]
+  ]
+ }
+}

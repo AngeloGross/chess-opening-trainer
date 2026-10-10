@@ -30,7 +30,7 @@ function fakePool(fx) {
 
 const options = (fx, extra = {}) => ({
   perfs: ['blitz'], since: null, maxGames: null, maxMoves: fx.settings.max_moves, threshold: fx.settings.threshold,
-  depth: 12, multipv: 'eager', flushMs: 1, ...extra,
+  depth: 12, multipv: 'eager', flushMs: 1, openingMoves: 0, ...extra, // the fixtures test the other rules
 });
 
 async function dbWith(fx) {

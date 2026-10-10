@@ -44,7 +44,8 @@ function resultDoc(res, calls) {
 async function runFixture(fx) {
   const { max_moves: maxMoves, threshold } = fx.settings;
   const skip = fx.skip
-    ? { book: new Set(fx.skip.book), bookMoves: fx.skip.book_moves }
+    ? { book: new Set(fx.skip.book ?? []), bookMoves: fx.skip.book_moves ?? 0, openingMoves: fx.skip.opening_moves ?? 0,
+      openingFloor: fx.skip.opening_floor ?? 20 }
     : NO_SKIP;
   const results = [];
   const analysed = [];

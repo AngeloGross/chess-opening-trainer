@@ -70,7 +70,10 @@ def run_fixture(fixture):
 
     settings = fixture["settings"]
     spec = fixture.get("skip")
-    skip = NO_SKIP if spec is None else Skip(book=frozenset(spec["book"]), book_moves=spec["book_moves"])
+    skip = NO_SKIP if spec is None else Skip(
+        book=frozenset(spec.get("book", [])), book_moves=spec.get("book_moves", 0),
+        opening_moves=spec.get("opening_moves", 0), opening_floor=spec.get("opening_floor", 20),
+    )
     docs, analysed = [], []
     for game in fixture["games"]:
         engine = FixtureEngine(fixture.get("fakeEngine", {}))

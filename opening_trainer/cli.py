@@ -16,7 +16,7 @@ import chess.engine
 from . import WEB_DIR
 from .aggregate import POSITIONS_PATH, aggregate, write_positions
 from .analyse import analyse_game
-from .book import BOOK_ID, DEFAULT_BOOK_MOVES, Skip, load_book
+from .book import BOOK_ID, DEFAULT_BOOK_MOVES, DEFAULT_OPENING_FLOOR, DEFAULT_OPENING_MOVES, Skip, load_book
 from .engine import Engine, EngineAnalysisError, EngineMissingError
 from .fetch import FetchError, check_user, fetch, games_path, is_supported, read_games
 from .settings import UserNotSetError, remember_user, resolve_user
@@ -115,7 +115,8 @@ def cmd_analyse(args: argparse.Namespace) -> None:
         print("No stored games match the filters. Run `uv run trainer fetch` first.")
         return
 
-    skip = Skip(book=load_book() if args.book_moves else frozenset(), book_moves=args.book_moves)
+    skip = Skip(book=load_book() if args.book_moves else frozenset(), book_moves=args.book_moves,
+                opening_moves=args.opening_moves, opening_floor=args.opening_floor)
     progress = Progress()
     results = []
     with Engine(depth=args.depth) as engine:
@@ -161,6 +162,8 @@ def cmd_analyse(args: argparse.Namespace) -> None:
             "depth": args.depth,
             "book_moves": args.book_moves,
             "book": BOOK_ID if args.book_moves else None,
+            "opening_moves": args.opening_moves,
+            "opening_floor": args.opening_floor,
         },
     }
     write_positions(entries, meta)
@@ -266,6 +269,12 @@ def _add_game_options(p: argparse.ArgumentParser, analysis: bool) -> None:
     p.add_argument("--since", type=_date_ms, help="only games on or after YYYY-MM-DD")
     if analysis:
         p.add_argument("--max-moves", type=_positive_int, default=12, help="scan your first N moves (default: %(default)s)")
+        p.add_argument("--opening-moves", type=_non_negative_int, default=DEFAULT_OPENING_MOVES,
+                       help="within your first N moves, a loss that leaves you no worse than --opening-floor is "
+                            "an opening choice, not a mistake; 0 turns this off (default: %(default)s)")
+        p.add_argument("--opening-floor", type=_non_negative_int, default=DEFAULT_OPENING_FLOOR,
+                       help="cp you may be behind after an opening choice as White; Black gets 30 cp more, "
+                            "since he starts about that far behind (default: %(default)s)")
         p.add_argument("--book-moves", type=_non_negative_int, default=DEFAULT_BOOK_MOVES,
                        help="within your first N moves, a gambit move (opening book: named gambits and "
                             "sacrifices) is not judged; 0 judges every move (default: %(default)s)")

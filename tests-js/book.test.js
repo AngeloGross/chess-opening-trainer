@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Chess } from '../web/vendor/chess.js@1.4.0/dist/esm/chess.js';
-import { BOOK_ID, NO_SKIP, loadGambitBook, parseBook, skips } from '../web/core/book.js';
+import { BOOK_ID, NO_SKIP, loadGambitBook, openingChoice, parseBook, skips } from '../web/core/book.js';
 import { fenKey } from '../web/core/fen.js';
 
 const FILE = new URL('../web/book/gambits.json', import.meta.url);
@@ -57,5 +57,18 @@ describe('skips', () => {
     expect(skips({ ...skip, bookMoves: 0 }, 1, after)).toBe(false);
     expect(skips(NO_SKIP, 1, after)).toBe(false);
     expect(skips(skip, 1, fenAfter('d4 d5'))).toBe(false);
+  });
+});
+
+describe('openingChoice', () => {
+  const skip = { ...NO_SKIP, openingMoves: 3, openingFloor: 20 };
+
+  it('floor per colour, inclusive; off beyond openingMoves and by default', () => {
+    expect(openingChoice(skip, 2, 'white', -20)).toBe(true);
+    expect(openingChoice(skip, 2, 'white', -21)).toBe(false);
+    expect(openingChoice(skip, 3, 'black', -50)).toBe(true);
+    expect(openingChoice(skip, 3, 'black', -51)).toBe(false);
+    expect(openingChoice(skip, 4, 'white', 100)).toBe(false);
+    expect(openingChoice(NO_SKIP, 1, 'white', 100)).toBe(false);
   });
 });
