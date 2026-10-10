@@ -11,6 +11,7 @@ from typing import Protocol
 
 import chess
 
+from .book import NO_SKIP, Skip
 from .engine import fen_key
 
 DECIDED_CP = 300
@@ -44,10 +45,14 @@ def analyse_moves(
     sans: list[str],
     color: chess.Color,
     engine: Evaluator,
-    max_moves: int = 15,
+    max_moves: int = 12,
     threshold: int = 20,
+    skip: Skip = NO_SKIP,
 ) -> GameResult:
-    """Scan the player's first `max_moves` moves for the first loss >= threshold."""
+    """Scan the player's first `max_moves` moves for the first loss >= threshold.
+
+    Moves `skip` says are played on purpose (gambit book, marked as intended) are not judged.
+    """
     board = chess.Board()
     result = GameResult(color=color)
 
@@ -65,6 +70,9 @@ def analyse_moves(
         fen = board.fen()
         key = fen_key(fen)
         result.reached.append(key)
+        if skip.skips(board, move, key):
+            board.push(move)
+            continue
         best, eval_best = engine.evaluate(fen)
 
         if best is not None and abs(eval_best) <= DECIDED_CP and move.uci() != best:
@@ -110,8 +118,10 @@ def game_url(game: dict, color: chess.Color, ply: int | None = None) -> str:
     return url
 
 
-def analyse_game(game: dict, user: str, engine: Evaluator, max_moves: int, threshold: int) -> GameResult | None:
+def analyse_game(
+    game: dict, user: str, engine: Evaluator, max_moves: int, threshold: int, skip: Skip = NO_SKIP
+) -> GameResult | None:
     color = player_color(game, user)
     if color is None or not game.get("moves"):
         return None
-    return analyse_moves(game["moves"].split(), color, engine, max_moves, threshold)
+    return analyse_moves(game["moves"].split(), color, engine, max_moves, threshold, skip)

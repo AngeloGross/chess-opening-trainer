@@ -1,0 +1,539 @@
+{
+ "name": "deliberate-moves",
+ "scenarios": [
+  "a move that reaches a book position within book_moves is not evaluated; the scan goes on",
+  "the next real mistake of that game is found (Englund: 2...Nc6? after the book 1...e5)",
+  "a book move beyond book_moves is judged like any other (Evans 4.b4 with book_moves 3)",
+  "a move not in the book is judged (Damiano 2...f6)",
+  "a move marked as intended is not judged at any move number; skipped positions still count as reached",
+  "an intended mark is per position: the same move elsewhere is judged"
+ ],
+ "user": "AngelOgro",
+ "settings": {
+  "max_moves": 15,
+  "threshold": 20
+ },
+ "games": [
+  {
+   "id": "delibe01",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791444124876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "d4 e5 dxe5 Nc6 Nf3 Qe7",
+   "opening": {
+    "eco": "A40",
+    "name": "Englund Gambit",
+    "ply": 2
+   }
+  },
+  {
+   "id": "delibe02",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791443524876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 e5 f4 exf4 Nf3 g5",
+   "opening": {
+    "eco": "C33",
+    "name": "King's Gambit Accepted",
+    "ply": 2
+   }
+  },
+  {
+   "id": "delibe03",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791442924876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 e5 Nf3 Nc6 Bc4 Bc5 b4",
+   "opening": {
+    "eco": "C51",
+    "name": "Italian Game: Evans Gambit",
+    "ply": 2
+   }
+  },
+  {
+   "id": "delibe04",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791442324876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 e5 Nf3 f6 Nxe5",
+   "opening": {
+    "eco": "C40",
+    "name": "Damiano Defense",
+    "ply": 2
+   }
+  },
+  {
+   "id": "delibe05",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791441724876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 e5 Qh5 Nc6 Bc4",
+   "opening": {
+    "eco": "C20",
+    "name": "Wayward Queen Attack",
+    "ply": 2
+   }
+  },
+  {
+   "id": "delibe06",
+   "rated": true,
+   "variant": "standard",
+   "speed": "blitz",
+   "perf": "blitz",
+   "createdAt": 1791441124876,
+   "status": "resign",
+   "players": {
+    "white": {
+     "user": {
+      "name": "AngelOgro",
+      "id": "angelogro"
+     },
+     "rating": 2000
+    },
+    "black": {
+     "user": {
+      "name": "opponent",
+      "id": "opponent"
+     },
+     "rating": 2000
+    }
+   },
+   "moves": "e4 c5 Qh5",
+   "opening": {
+    "eco": "B20",
+    "name": "Sicilian Defense",
+    "ply": 2
+   }
+  }
+ ],
+ "fakeEngine": {
+  "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -": [
+   "d7d5",
+   20
+  ],
+  "rnbqkbnr/pppp1ppp/8/4p3/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -": [
+   "d4e5",
+   -150
+  ],
+  "rnbqkbnr/pppp1ppp/8/4P3/8/8/PPP1PPPP/RNBQKBNR b KQkq -": [
+   "d8e7",
+   -120
+  ],
+  "r1bqkbnr/pppp1ppp/2n5/4P3/8/8/PPP1PPPP/RNBQKBNR w KQkq -": [
+   "g1f3",
+   150
+  ],
+  "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -": [
+   "g1f3",
+   40
+  ],
+  "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq -": [
+   "e5f4",
+   20
+  ],
+  "rnbqkbnr/pppp1ppp/8/8/4Pp2/8/PPPP2PP/RNBQKBNR w KQkq -": [
+   "g1f3",
+   30
+  ],
+  "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq -": [
+   "c2c3",
+   40
+  ],
+  "r1bqk1nr/pppp1ppp/2n5/2b1p3/1PB1P3/5N2/P1PP1PPP/RNBQK2R b KQkq -": [
+   "c5b4",
+   0
+  ],
+  "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -": [
+   "b8c6",
+   -30
+  ],
+  "rnbqkbnr/pppp2pp/5p2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq -": [
+   "f3e5",
+   120
+  ],
+  "rnbqkbnr/pppp1ppp/8/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq -": [
+   "b8c6",
+   -10
+  ],
+  "r1bqkbnr/pppp1ppp/2n5/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq -": [
+   "f1c4",
+   30
+  ],
+  "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -": [
+   "g1f3",
+   30
+  ],
+  "rnbqkbnr/pp1ppppp/8/2p4Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq -": [
+   "g8f6",
+   20
+  ],
+  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -": [
+   "e2e4",
+   30
+  ],
+  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -": [
+   "e7e5",
+   25
+  ]
+ },
+ "topMoves": {},
+ "skip": {
+  "book": [
+   "r1bqk1nr/pppp1ppp/2n5/2b1p3/1PB1P3/5N2/P1PP1PPP/RNBQK2R b KQkq -",
+   "rnbqkbnr/pppp1ppp/8/4p3/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -",
+   "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq -"
+  ],
+  "book_moves": 3,
+  "intended": [
+   "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -|d1h5"
+  ]
+ },
+ "expected": {
+  "results": [
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4P3/8/8/PPP1PPPP/RNBQKBNR b KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pppp1ppp/8/4P3/8/8/PPP1PPPP/RNBQKBNR b KQkq - 0 2",
+     "key": "rnbqkbnr/pppp1ppp/8/4P3/8/8/PPP1PPPP/RNBQKBNR b KQkq -",
+     "ply": 3,
+     "played": "b8c6",
+     "played_san": "Nc6",
+     "best": "d8e7",
+     "best_san": "Qe7",
+     "loss": 30,
+     "eval_best": -120
+    },
+    "evaluated": [
+     "rnbqkbnr/pppp1ppp/8/4P3/8/8/PPP1PPPP/RNBQKBNR b KQkq -",
+     "r1bqkbnr/pppp1ppp/2n5/4P3/8/8/PPP1PPPP/RNBQKBNR w KQkq -"
+    ]
+   },
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppp1ppp/8/8/4Pp2/8/PPPP2PP/RNBQKBNR w KQkq -"
+    ],
+    "mistake": null,
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppp1ppp/8/8/4Pp2/8/PPPP2PP/RNBQKBNR w KQkq -"
+    ]
+   },
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq -",
+     "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq -"
+    ],
+    "mistake": {
+     "fen": "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+     "key": "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq -",
+     "ply": 6,
+     "played": "b2b4",
+     "played_san": "b4",
+     "best": "c2c3",
+     "best_san": "c3",
+     "loss": 40,
+     "eval_best": 40
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq -",
+     "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq -",
+     "r1bqk1nr/pppp1ppp/2n5/2b1p3/1PB1P3/5N2/P1PP1PPP/RNBQK2R b KQkq -"
+    ]
+   },
+   {
+    "color": "black",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2",
+     "key": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -",
+     "ply": 3,
+     "played": "f7f6",
+     "played_san": "f6",
+     "best": "b8c6",
+     "best_san": "Nc6",
+     "loss": 90,
+     "eval_best": -30
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -",
+     "rnbqkbnr/pppp2pp/5p2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq -"
+    ]
+   },
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "r1bqkbnr/pppp1ppp/2n5/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq -"
+    ],
+    "mistake": null,
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "r1bqkbnr/pppp1ppp/2n5/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq -"
+    ]
+   },
+   {
+    "color": "white",
+    "reached": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -"
+    ],
+    "mistake": {
+     "fen": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+     "key": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "ply": 2,
+     "played": "d1h5",
+     "played_san": "Qh5",
+     "best": "g1f3",
+     "best_san": "Nf3",
+     "loss": 50,
+     "eval_best": 30
+    },
+    "evaluated": [
+     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+     "rnbqkbnr/pp1ppppp/8/2p4Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq -"
+    ]
+   }
+  ],
+  "positions": [
+   {
+    "key": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -",
+    "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2",
+    "orientation": "black",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 90.0,
+    "raw_avg_loss": 90.0,
+    "score": 90.0,
+    "best": "b8c6",
+    "best_san": "Nc6",
+    "acceptable": [
+     "b8c6"
+    ],
+    "played": [
+     {
+      "uci": "f7f6",
+      "san": "f6",
+      "count": 1
+     }
+    ],
+    "eco": "C40",
+    "opening": "Damiano Defense",
+    "games": [
+     "https://lichess.org/delibe04/black#3"
+    ]
+   },
+   {
+    "key": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -",
+    "fen": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+    "orientation": "white",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 50.0,
+    "raw_avg_loss": 50.0,
+    "score": 50.0,
+    "best": "g1f3",
+    "best_san": "Nf3",
+    "acceptable": [
+     "g1f3"
+    ],
+    "played": [
+     {
+      "uci": "d1h5",
+      "san": "Qh5",
+      "count": 1
+     }
+    ],
+    "eco": "B20",
+    "opening": "Sicilian Defense",
+    "games": [
+     "https://lichess.org/delibe06#2"
+    ]
+   },
+   {
+    "key": "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq -",
+    "fen": "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+    "orientation": "white",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 40.0,
+    "raw_avg_loss": 40.0,
+    "score": 40.0,
+    "best": "c2c3",
+    "best_san": "c3",
+    "acceptable": [
+     "c2c3"
+    ],
+    "played": [
+     {
+      "uci": "b2b4",
+      "san": "b4",
+      "count": 1
+     }
+    ],
+    "eco": "C51",
+    "opening": "Italian Game: Evans Gambit",
+    "games": [
+     "https://lichess.org/delibe03#6"
+    ]
+   },
+   {
+    "key": "rnbqkbnr/pppp1ppp/8/4P3/8/8/PPP1PPPP/RNBQKBNR b KQkq -",
+    "fen": "rnbqkbnr/pppp1ppp/8/4P3/8/8/PPP1PPPP/RNBQKBNR b KQkq - 0 2",
+    "orientation": "black",
+    "errors": 1,
+    "reached": 1,
+    "avg_loss": 30.0,
+    "raw_avg_loss": 30.0,
+    "score": 30.0,
+    "best": "d8e7",
+    "best_san": "Qe7",
+    "acceptable": [
+     "d8e7"
+    ],
+    "played": [
+     {
+      "uci": "b8c6",
+      "san": "Nc6",
+      "count": 1
+     }
+    ],
+    "eco": "A40",
+    "opening": "Englund Gambit",
+    "games": [
+     "https://lichess.org/delibe01/black#3"
+    ]
+   }
+  ],
+  "progress": [
+   [
+    1,
+    4
+   ],
+   [
+    2,
+    4
+   ],
+   [
+    3,
+    4
+   ],
+   [
+    4,
+    4
+   ]
+  ]
+ }
+}

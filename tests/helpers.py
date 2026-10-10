@@ -66,12 +66,17 @@ def run_fixture(fixture):
     """The `expected` part of a fixture, computed by the Python reference implementation."""
     from opening_trainer.aggregate import aggregate
     from opening_trainer.analyse import analyse_game
+    from opening_trainer.book import NO_SKIP, Skip
 
     settings = fixture["settings"]
+    spec = fixture.get("skip")
+    skip = NO_SKIP if spec is None else Skip(
+        book=frozenset(spec.get("book", [])), book_moves=spec["book_moves"], intended=frozenset(spec.get("intended", []))
+    )
     docs, analysed = [], []
     for game in fixture["games"]:
         engine = FixtureEngine(fixture.get("fakeEngine", {}))
-        res = analyse_game(game, fixture["user"], engine, settings["max_moves"], settings["threshold"])
+        res = analyse_game(game, fixture["user"], engine, settings["max_moves"], settings["threshold"], skip)
         docs.append(_result_doc(res, engine.calls))
         if res is not None:
             analysed.append((game, res))

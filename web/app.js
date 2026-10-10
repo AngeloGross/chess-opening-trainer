@@ -31,6 +31,7 @@ import { Coordinator, DEFAULT_PERFS, LAZY_TOP, defaultOptions } from './analysis
 import {
   CALIBRATION_SETTING, cachedCalibration, calibrate, deviceFingerprint, preferredWorkers, withCalibration,
 } from './core/calibration.js';
+import { loadGambitBook } from './core/book.js';
 import { estimateRun, estimateText, formatDuration, liveEtaMs } from './core/eta.js';
 import { classifyError, messageFor, messageText, retryCountdownText } from './core/messages.js';
 import { chooseStart, cliOffer, loadCliDoc } from './core/startChoice.js';
@@ -39,6 +40,7 @@ import { mountDataPanel } from './dataPanel.js';
 import { EnginePool, defaultWorkerCount } from './engine/pool.js';
 import { applyImport, importMarkerName } from './store/backupStore.js';
 import { getPositions, getSetting, openDb, requestPersistence, setSetting, userIdOf } from './store/db.js';
+import { loadIntended } from './core/trainerList.js';
 import { mountTrainer } from './trainer.js';
 import { createWakeLock } from './wakeLock.js';
 
@@ -46,6 +48,7 @@ const $ = (id) => document.getElementById(id);
 const DEFAULTS = defaultOptions();
 const OPTIONS_SETTING = 'analysisOptions';
 const MAX_GAMES_LIMIT = 5000;
+const MAX_MOVES_LIMIT = 40;
 // Lichess user names: 2-30 letters, digits, '_' or '-'.
 const NAME_PATTERN = /^[A-Za-z0-9_-]{2,30}$/;
 
@@ -268,20 +271,24 @@ async function useCli() {
 
 async function loadOptions() {
   const o = (await getSetting(db, OPTIONS_SETTING)) ?? {};
-  return { maxGames: o.maxGames ?? DEFAULTS.maxGames, depth: o.depth ?? DEFAULTS.depth };
+  return { maxGames: o.maxGames ?? DEFAULTS.maxGames, depth: o.depth ?? DEFAULTS.depth, maxMoves: o.maxMoves ?? DEFAULTS.maxMoves };
 }
 
-function fillOptions({ maxGames, depth }) {
+function fillOptions({ maxGames, depth, maxMoves }) {
   $('opt-games').value = String(maxGames);
+  $('opt-moves').value = String(maxMoves);
+  $('moves-info').textContent = String(maxMoves);
   if (![...$('opt-depth').options].some((o) => o.value === String(depth))) $('opt-depth').add(new Option(String(depth), String(depth)));
   $('opt-depth').value = String(depth);
 }
 
 function readOptions() {
   const games = Math.round(Number($('opt-games').value));
+  const moves = Math.round(Number($('opt-moves').value));
   return {
     maxGames: Number.isFinite(games) && games >= 1 ? Math.min(games, MAX_GAMES_LIMIT) : DEFAULTS.maxGames,
     depth: Number($('opt-depth').value) || DEFAULTS.depth,
+    maxMoves: Number.isFinite(moves) && moves >= 1 ? Math.min(moves, MAX_MOVES_LIMIT) : DEFAULTS.maxMoves,
   };
 }
 
@@ -620,10 +627,16 @@ async function run(user, options) {
     await setSetting(db, importMarkerName(name), null); // the analysis below replaces an imported document
     $('name').value = name;
 
+    // Gambit book (vendored, same origin) and the moves this user marked as intended: neither is judged.
+    const book = await loadGambitBook();
+    const intended = loadIntended(localStorage, name);
+    note('skip', { book: book.size, intended: intended.size });
+
     ensurePool(cal.workers);
     const co = (app.coordinator = new Coordinator({
       db, pool, user: name,
-      options: { maxGames: options.maxGames, depth: options.depth, multipv: DEFAULTS.multipv, lazyTop: LAZY_TOP },
+      options: { maxGames: options.maxGames, depth: options.depth, maxMoves: options.maxMoves, book, intended,
+        multipv: DEFAULTS.multipv, lazyTop: LAZY_TOP },
       onProgress: (p) => {
         showAnalysisProgress(p);
         if (p.state === 'paused') wake.release();
@@ -702,6 +715,7 @@ function wire() {
   });
   const optionsChanged = () => { if (!app.busy) renderEta(); };
   $('opt-games').addEventListener('input', optionsChanged);
+  $('opt-moves').addEventListener('input', () => { $('moves-info').textContent = String(readOptions().maxMoves); });
   $('opt-depth').addEventListener('change', optionsChanged);
   $('remeasure').addEventListener('click', () => {
     if (app.busy) return;

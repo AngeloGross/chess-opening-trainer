@@ -48,6 +48,9 @@
           <label>Games (most recent)
             <input id="opt-games" type="number" min="1" max="5000" step="1" inputmode="numeric">
           </label>
+          <label>Moves to scan
+            <input id="opt-moves" type="number" min="1" max="40" step="1" inputmode="numeric">
+          </label>
           <label>Depth
             <select id="opt-depth">
               <option value="10">10 (fastest)</option>
@@ -58,8 +61,9 @@
             </select>
           </label>
         </div>
-        <p class="muted small">Blitz, rapid and classical games; your first 15 moves; a loss of 20 cp or more counts
-          as a mistake. Your games and the analysis stay in this browser.</p>
+        <p class="muted small">Blitz, rapid and classical games; your first <span id="moves-info">12</span> moves; a loss
+          of 20 cp or more counts as a mistake. Named gambit moves within your first 5 moves and moves you marked as
+          intended are not judged. Your games and the analysis stay in this browser.</p>
         <p class="muted small"><span id="calibration-info"></span>
           <button id="remeasure" type="button" class="link" hidden>Re-measure</button></p>
       </details>
@@ -154,7 +158,15 @@
               <option value="black">Black</option>
             </select>
           </label>
+          <label>Sort
+            <select id="filter-sort">
+              <option value="frequent">Most often wrong</option>
+              <option value="score">Highest score (wrong × loss)</option>
+              <option value="loss">Biggest average loss</option>
+            </select>
+          </label>
           <label class="check"><input type="checkbox" id="filter-unsolved"> Unsolved only</label>
+          <label class="check"><input type="checkbox" id="filter-intended"> Show intended</label>
         </div>
         <ol id="position-list"></ol>
       </aside>
@@ -178,6 +190,7 @@
           <button id="retry" type="button" hidden>Retry</button>
           <button id="reveal" type="button" hidden>Reveal</button>
         </div>
+        <p><button id="mark-intended" type="button" class="link" hidden></button></p>
         <p><a id="lichess-link" href="#" target="_blank" rel="noopener">Open in Lichess analysis</a></p>
         <div id="games"></div>
       </section>

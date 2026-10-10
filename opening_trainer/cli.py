@@ -16,6 +16,7 @@ import chess.engine
 from . import WEB_DIR
 from .aggregate import POSITIONS_PATH, aggregate, write_positions
 from .analyse import analyse_game
+from .book import BOOK_ID, DEFAULT_BOOK_MOVES, Skip, gambit_book
 from .engine import Engine, EngineAnalysisError, EngineMissingError
 from .fetch import FetchError, check_user, fetch, games_path, is_supported, read_games
 from .settings import UserNotSetError, remember_user, resolve_user
@@ -49,6 +50,10 @@ def _positive_int(value: str) -> int:
     if n < 1:
         raise argparse.ArgumentTypeError(f"must be at least 1, got {n}")
     return n
+
+
+def _non_negative_int(value: str) -> int:
+    return 0 if value.strip() == "0" else _positive_int(value)
 
 
 def _port(value: str) -> int:
@@ -110,11 +115,12 @@ def cmd_analyse(args: argparse.Namespace) -> None:
         print("No stored games match the filters. Run `uv run trainer fetch` first.")
         return
 
+    skip = Skip(book=gambit_book() if args.book_moves else frozenset(), book_moves=args.book_moves)
     progress = Progress()
     results = []
     with Engine(depth=args.depth) as engine:
         for i, game in enumerate(games, 1):
-            res = analyse_game(game, args.user, engine, args.max_moves, args.threshold)
+            res = analyse_game(game, args.user, engine, args.max_moves, args.threshold, skip)
             if res is not None:
                 results.append((game, res))
             progress.show(
@@ -153,6 +159,8 @@ def cmd_analyse(args: argparse.Namespace) -> None:
             "max_moves": args.max_moves,
             "threshold": args.threshold,
             "depth": args.depth,
+            "book_moves": args.book_moves,
+            "book": BOOK_ID if args.book_moves else None,
         },
     }
     write_positions(entries, meta)
@@ -257,7 +265,10 @@ def _add_game_options(p: argparse.ArgumentParser, analysis: bool) -> None:
     p.add_argument("--all", action="store_true", help="use all games, ignoring --max-games")
     p.add_argument("--since", type=_date_ms, help="only games on or after YYYY-MM-DD")
     if analysis:
-        p.add_argument("--max-moves", type=_positive_int, default=15, help="scan your first N moves (default: %(default)s)")
+        p.add_argument("--max-moves", type=_positive_int, default=12, help="scan your first N moves (default: %(default)s)")
+        p.add_argument("--book-moves", type=_non_negative_int, default=DEFAULT_BOOK_MOVES,
+                       help="within your first N moves, a move that reaches a named gambit position is not "
+                            "judged; 0 judges every move (default: %(default)s)")
         p.add_argument("--threshold", type=_positive_int, default=20, help="mistake threshold in cp (default: %(default)s)")
         p.add_argument("--depth", type=_positive_int, default=18, help="Stockfish depth (default: %(default)s)")
 

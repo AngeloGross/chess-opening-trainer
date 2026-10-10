@@ -11,7 +11,7 @@ const DIR = new URL('../spec/fixtures/', import.meta.url);
 const fixture = (name) => JSON.parse(readFileSync(new URL(`${name}.json`, DIR), 'utf8'));
 const FIXTURES = ['accept-window', 'black-side', 'clean-games', 'colour-and-urls', 'corrupt-moves', 'decided-position',
   'en-passant', 'loss-cap-ranking', 'mate-scores', 'max-moves', 'mistake-found', 'only-first-mistake',
-  'repeated-position', 'rounding-ties', 'tie-breaks'];
+  'repeated-position', 'rounding-ties', 'tie-breaks', 'deliberate-moves'];
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -58,9 +58,10 @@ async function dbWith(games, user) {
 }
 
 function options(fx, extra = {}) {
+  const skip = fx.skip ? { book: new Set(fx.skip.book ?? []), bookMoves: fx.skip.book_moves, intended: new Set(fx.skip.intended ?? []) } : {};
   return {
     perfs: ['blitz'], since: null, maxGames: null, maxMoves: fx.settings.max_moves, threshold: fx.settings.threshold,
-    depth: 14, multipv: 'eager', flushMs: 1, ...extra,
+    depth: 14, multipv: 'eager', flushMs: 1, ...skip, ...extra,
   };
 }
 
@@ -77,7 +78,7 @@ describe('selectGames and defaults', () => {
 
   it('defaults per device: desktop eager d14/500, mobile lazy top-30 d12/150', () => {
     const desktop = defaultOptions({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0.0.0' });
-    expect(desktop).toMatchObject({ mobile: false, depth: 14, maxGames: 500, multipv: 'eager', maxMoves: 15, threshold: 20 });
+    expect(desktop).toMatchObject({ mobile: false, depth: 14, maxGames: 500, multipv: 'eager', maxMoves: 12, bookMoves: 5, threshold: 20 });
     expect(desktop.perfs).toEqual(['blitz', 'rapid', 'classical']);
     const phone = defaultOptions({ userAgent: 'Mozilla/5.0 (Linux; Android 14) Mobile Safari/537.36' });
     expect(phone).toMatchObject({ mobile: true, depth: 12, maxGames: 150, multipv: 'lazy', lazyTop: 30 });
@@ -90,13 +91,24 @@ describe('runKey', () => {
 
   it('is stable for the same settings, case of the name and perf order', () => {
     const key = runKeyOf(base);
-    expect(key).toMatch(/^r1-[0-9a-f]{16}$/);
+    expect(key).toMatch(/^r2-[0-9a-f]{16}$/);
     expect(runKeyOf({ ...base, user: 'angelogro', perfs: ['rapid', 'blitz', 'blitz'] })).toBe(key);
+    const marked = { ...base, intended: ['k|a', 'k|b'] };
+    expect(runKeyOf({ ...marked, intended: new Set(['k|b', 'k|a', 'k|a']) })).toBe(runKeyOf(marked));
+  });
+
+  it('book moves only count with a book', () => {
+    const key = runKeyOf(base);
+    expect(runKeyOf({ ...base, bookMoves: 5 })).toBe(key);
+    expect(runKeyOf({ ...base, book: new Set(['x']), bookMoves: 0 })).toBe(key);
+    const withBook = runKeyOf({ ...base, book: new Set(['x']), bookMoves: 5 });
+    expect(withBook).not.toBe(key);
+    expect(runKeyOf({ ...base, book: new Set(['x']), bookMoves: 4 })).not.toBe(withBook);
   });
 
   it('changes with every analysis setting and the engine', () => {
     const key = runKeyOf(base);
-    for (const change of [{ user: 'x' }, { perfs: ['blitz'] }, { maxMoves: 14 }, { threshold: 21 }, { depth: 12 }, { engineId: 'F' }]) {
+    for (const change of [{ user: 'x' }, { perfs: ['blitz'] }, { maxMoves: 14 }, { threshold: 21 }, { depth: 12 }, { engineId: 'F' }, { intended: ['k|a'] }]) {
       expect(runKeyOf({ ...base, ...change })).not.toBe(key);
     }
   });
@@ -119,7 +131,8 @@ describe('coordinator on the shared fixtures', () => {
       expect(JSON.stringify(doc.positions)).toBe(JSON.stringify(fx.expected.positions));
       expect(doc.games).toBe(analysed.length);
       expect(doc.clean_games).toBe(analysed.filter((r) => r.mistake === null).length);
-      expect(doc.settings).toEqual({ perf: ['blitz'], max_moves: fx.settings.max_moves, threshold: fx.settings.threshold, depth: 14, engine: 'Fake Engine 1' });
+      const book = fx.skip?.book?.length && fx.skip.book_moves ? { book_moves: fx.skip.book_moves, book: 'chess-openings@a6189a3/gambits' } : { book_moves: 0, book: null };
+      expect(doc.settings).toEqual({ perf: ['blitz'], max_moves: fx.settings.max_moves, threshold: fx.settings.threshold, depth: 14, engine: 'Fake Engine 1', ...book });
       expect(Object.keys(doc)).toEqual(['generated', 'user', 'games', 'clean_games', 'settings', 'positions']);
       expect(doc.generated).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00$/);
       expect(await getPositions(db, fx.user)).toEqual(doc);

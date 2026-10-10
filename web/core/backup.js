@@ -6,7 +6,8 @@
 //     user: "AngelOgro",
 //     positions: <positions document, exactly the CLI's positions.json shape> | null,
 //     stats: { <position key>: {tries, solved, failed, last} },   localStorage `opening-trainer:stats:<userId>`
-//     settings: { analysisOptions?: {maxGames, depth} },
+//     settings: { analysisOptions?: {maxGames, depth, maxMoves?},
+//                 intended?: ["<fenKey>|<uci>", …] },      localStorage `opening-trainer:intended:<userId>`
 //     // kind "full" only:
 //     fetchState: <store fetchState row of the user> | null,
 //     games: [<store games rows of the user>], results: [<store results rows of the user>],

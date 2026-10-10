@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { readAnalysisFile } from '../web/core/backup.js';
-import { statsKeyFor } from '../web/core/trainerList.js';
+import { loadIntended, saveIntended, statsKeyFor } from '../web/core/trainerList.js';
 import { applyImport, collectBackup, existingOf, importMarkerName, readStats } from '../web/store/backupStore.js';
 import {
   exportUserData, getFetchState, getGames, getPositions, getSetting, openDb, putFetchState, putGames, putPositions,
@@ -150,5 +150,31 @@ describe('storageInfo', () => {
     expect(await storageInfo(nav)).toEqual({ supported: true, persisted: true, usage: 1234, quota: 5e9 });
     const failing = { storage: { persisted: async () => { throw new Error('x'); } } };
     expect(await storageInfo(failing)).toEqual({ supported: true, persisted: null, usage: null, quota: null });
+  });
+});
+
+describe('moves marked as intended', () => {
+  const marks = (s) => [...loadIntended(s, 'AngelOgro')].sort();
+
+  it('travel in the backup and merge or replace on import', async () => {
+    await analysedBrowser();
+    saveIntended(storage, 'AngelOgro', ['k|a']);
+    const { backup } = await asFile(await collectBackup(db, storage, makeDoc(), 'small'));
+    expect(backup.settings.intended).toEqual(['k|a']);
+
+    const other = memoryStorage();
+    saveIntended(other, 'AngelOgro', ['k|b']);
+    await applyImport(await openDb({ factory: new IDBFactory() }), other, { kind: 'backup', backup }, 'merge');
+    expect(marks(other)).toEqual(['k|a', 'k|b']);
+    await applyImport(await openDb({ factory: new IDBFactory() }), other, { kind: 'backup', backup }, 'replace');
+    expect(marks(other)).toEqual(['k|a']);
+    await applyImport(await openDb({ factory: new IDBFactory() }), other, { kind: 'backup', backup: { ...backup, settings: {} } }, 'replace');
+    expect(marks(other)).toEqual([]);
+  });
+
+  it('a CLI file leaves them alone', async () => {
+    saveIntended(storage, 'AngelOgro', ['k|a']);
+    await applyImport(db, storage, { kind: 'positions', doc: makeDoc() }, 'replace');
+    expect(marks(storage)).toEqual(['k|a']);
   });
 });

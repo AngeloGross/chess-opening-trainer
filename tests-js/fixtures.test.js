@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { aggregate } from '../web/core/aggregate.js';
 import { analyseGame } from '../web/core/analyse.js';
+import { NO_SKIP } from '../web/core/book.js';
 import { fenKey } from '../web/core/fen.js';
 
 const DIR = new URL('../spec/fixtures/', import.meta.url);
@@ -42,11 +43,14 @@ function resultDoc(res, calls) {
 
 async function runFixture(fx) {
   const { max_moves: maxMoves, threshold } = fx.settings;
+  const skip = fx.skip
+    ? { book: new Set(fx.skip.book ?? []), bookMoves: fx.skip.book_moves, intended: new Set(fx.skip.intended ?? []) }
+    : NO_SKIP;
   const results = [];
   const analysed = [];
   for (const game of fx.games) {
     const engine = fixtureEngine(fx.fakeEngine ?? {});
-    const res = await analyseGame(game, fx.user, engine, maxMoves, threshold);
+    const res = await analyseGame(game, fx.user, engine, maxMoves, threshold, skip);
     results.push(resultDoc(res, engine.calls));
     if (res !== null) analysed.push([game, res]);
   }

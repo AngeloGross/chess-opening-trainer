@@ -2,7 +2,8 @@
 // into the list on screen during an analysis (design slice 6).
 import { describe, expect, it } from 'vitest';
 import {
-  LEGACY_STATS_KEY, filterPositions, loadStats, mergeList, openingCounts, statsKeyFor,
+  DEFAULT_SORT, LEGACY_STATS_KEY, SORT_KEY, filterPositions, intendedKeyFor, isIntendedIn, loadIntended, loadSort, loadStats,
+  mergeList, openingCounts, saveIntended, sortPositions, statsKeyFor, usualMove,
 } from '../web/core/trainerList.js';
 
 const pos = (key, opening = 'Sicilian', orientation = 'white') => ({ key, opening, orientation });
@@ -125,5 +126,61 @@ describe('mergeList (update during an analysis)', () => {
   it('drops a non-current entry the new document lost', () => {
     const merged = mergeList({ positions: [pos('a')], filters: ALL, isSolved: never, filtered: [pos('a'), pos('b')], index: 0 });
     expect(keys(merged.filtered)).toEqual(['a']);
+  });
+});
+
+describe('sort orders', () => {
+  const e = (key, errors, reached, score, avgLoss) => ({ key, errors, reached, score, avg_loss: avgLoss });
+  const list = [e('a', 2, 9, 300, 150), e('b', 5, 6, 150, 30), e('c', 5, 8, 100, 20), e('d', 1, 1, 500, 500)];
+
+  it('defaults to most often wrong, ties by reached, then score', () => {
+    expect(DEFAULT_SORT).toBe('frequent');
+    expect(keys(sortPositions(list, 'frequent'))).toEqual(['c', 'b', 'a', 'd']);
+    expect(keys(sortPositions(list, 'nonsense'))).toEqual(['c', 'b', 'a', 'd']);
+  });
+
+  it('by score and by average loss; the input stays as it was', () => {
+    expect(keys(sortPositions(list, 'score'))).toEqual(['d', 'a', 'b', 'c']);
+    expect(keys(sortPositions(list, 'loss'))).toEqual(['d', 'a', 'b', 'c']);
+    expect(keys(list)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('remembers a known order only', () => {
+    expect(loadSort(memoryStorage({ [SORT_KEY]: 'loss' }))).toBe('loss');
+    expect(loadSort(memoryStorage({ [SORT_KEY]: 'x' }))).toBe('frequent');
+    expect(loadSort(null)).toBe('frequent');
+  });
+});
+
+describe('moves marked as intended', () => {
+  const p = (key, ...ucis) => ({ ...pos(key), played: ucis.map((uci) => ({ uci, san: uci })) });
+  const marked = new Set(['k1|g2g4']);
+  const isIntended = (x) => isIntendedIn(x, marked);
+
+  it('is about the usual move only', () => {
+    expect(usualMove(p('k1', 'g2g4', 'h2h4'))).toEqual({ id: 'k1|g2g4', san: 'g2g4' });
+    expect(usualMove(p('k1'))).toBe(null);
+    expect(isIntended(p('k1', 'g2g4', 'h2h4'))).toBe(true);
+    expect(isIntended(p('k1', 'h2h4', 'g2g4'))).toBe(false);
+    expect(isIntended(p('k2', 'g2g4'))).toBe(false);
+  });
+
+  it('hides marked positions unless "Show intended" is on, also in a merge', () => {
+    const list = [p('k1', 'g2g4'), p('k2', 'a2a3')];
+    expect(keys(filterPositions(list, ALL, never, isIntended))).toEqual(['k2']);
+    expect(keys(filterPositions(list, { ...ALL, intended: true }, never, isIntended))).toEqual(['k1', 'k2']);
+    const merged = mergeList({ positions: list, filters: ALL, isSolved: never, isIntended, filtered: [], index: -1 });
+    expect(keys(merged.filtered)).toEqual(['k2']);
+  });
+
+  it('is stored per user, sorted, and removed when empty', () => {
+    const storage = memoryStorage();
+    saveIntended(storage, 'AngelOgro', ['b|x', 'a|y', 'a|y']);
+    expect(storage.data.get(intendedKeyFor('angelogro'))).toBe('["a|y","b|x"]');
+    expect(loadIntended(storage, 'ANGELOGRO')).toEqual(new Set(['a|y', 'b|x']));
+    expect(loadIntended(storage, 'Bob')).toEqual(new Set());
+    saveIntended(storage, 'AngelOgro', []);
+    expect(storage.data.has(intendedKeyFor('angelogro'))).toBe(false);
+    expect(loadIntended(memoryStorage({ [intendedKeyFor('x')]: '{bad' }), 'x')).toEqual(new Set());
   });
 });

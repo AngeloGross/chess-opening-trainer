@@ -6,9 +6,17 @@
 // `opts.alternatives(entry)` for the full entry ("Checking alternatives…"). Until the answer arrives only the
 // engine's best move is accepted at once; any other move waits for the answer and is then judged against the
 // full window, so a move that turns out fine is never scored as a miss. One scored attempt per visit still holds.
+//
+// Sort order: a select over the list (core/trainerList.js SORTS, remembered in localStorage), "Most often
+// wrong" by default. Intended moves: "… is intended" marks the usual move of the position (a gambit played
+// on purpose) through `opts.onIntendedChange`; the position leaves the list unless "Show intended" is on,
+// and the next analysis skips that move.
 import { Chessground } from './vendor/chessground@9.2.1/dist/chessground.min.js';
 import { Chess } from './vendor/chess.js@1.4.0/dist/esm/chess.js';
-import { filterPositions, loadStats, mergeList, openingCounts, statsKeyFor } from './core/trainerList.js';
+import {
+  SORT_KEY, filterPositions, isIntendedIn, loadIntended, loadSort, loadStats, mergeList, openingCounts, saveIntended,
+  sortOrder, sortPositions, statsKeyFor, usualMove,
+} from './core/trainerList.js';
 
 // ---------- chess helpers ----------
 
@@ -47,12 +55,18 @@ function describe(pos) {
  * Show `doc` in `root` (the element holding the trainer markup of index.html).
  * @param {HTMLElement} root
  * @param {{user?: string, positions: object[]}} doc
- * @param {{migrateLegacyStats?: boolean, storage?: Storage, alternatives?: ((entry: object) => Promise<object>)|null}} [opts]
+ * @param {{migrateLegacyStats?: boolean, storage?: Storage, alternatives?: ((entry: object) => Promise<object>)|null,
+ *   intended?: Iterable<string>, onIntendedChange?: ((intended: Set<string>) => void)|null}} [opts]
  *   migrateLegacyStats: a CLI document; stats of the old single-user page move to this user's key once
  *   alternatives: completes an `unchecked` entry (analysis/alternatives.js); without it the entry keeps its window
+ *   intended: the user's moves marked as intended (core/book.js intendedId); onIntendedChange stores a changed set.
+ *   Both default to the user's marks in `storage` (core/trainerList.js loadIntended / saveIntended).
  * @returns {{update: (doc: object) => void, destroy: () => void, readonly cg: any, readonly current: object|null}}
  */
-export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = globalThis.localStorage, alternatives = null } = {}) {
+export function mountTrainer(root, doc, {
+  migrateLegacyStats = false, storage = globalThis.localStorage, alternatives = null,
+  intended: marked = loadIntended(storage, doc.user), onIntendedChange = (set) => saveIntended(storage, doc.user, set),
+} = {}) {
   const $ = (id) => root.querySelector(`#${id}`);
   const listeners = new AbortController();
   const on = (target, type, fn) => target.addEventListener(type, fn, { signal: listeners.signal });
@@ -63,7 +77,9 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
   const checked = new Map();
   /** @type {Map<string, Promise<void>>} key -> running alternatives check */
   const checking = new Map();
-  let positions = overlay(doc.positions || []);
+  const intended = new Set(marked);
+  let sort = loadSort(storage);
+  let positions = sortPositions(overlay(doc.positions || []), sort);
   let filtered = [];
   let index = 0;
   let chess = null;
@@ -104,8 +120,12 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
 
   // "Solved" means the latest scored attempt was right; never-tried and last-failed are unsolved.
   const isSolved = (pos) => stats[pos.key]?.last === 'solved';
+  const isIntended = (pos) => isIntendedIn(pos, intended);
 
-  const filters = () => ({ opening: $('filter-opening').value, color: $('filter-color').value, unsolved: $('filter-unsolved').checked });
+  const filters = () => ({
+    opening: $('filter-opening').value, color: $('filter-color').value, unsolved: $('filter-unsolved').checked,
+    intended: $('filter-intended').checked,
+  });
 
   // ---------- board / quiz ----------
 
@@ -231,9 +251,10 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
         const li = document.createElement('li');
         li.classList.toggle('current', i === index);
         li.classList.toggle('solved', isSolved(pos));
+        li.classList.toggle('intended', isIntended(pos));
         const name = document.createElement('span');
         name.className = 'name';
-        name.textContent = `${i + 1}. ${pos.eco} ${pos.opening} (${pos.orientation})`;
+        name.textContent = `${i + 1}. ${pos.eco} ${pos.opening} (${pos.orientation})${isIntended(pos) ? ' · intended' : ''}`;
         const info = document.createElement('span');
         info.className = 'stats';
         info.textContent = describe(pos);
@@ -246,11 +267,13 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     list.querySelector('.current')?.scrollIntoView({ block: 'nearest' });
 
     const solved = positions.filter(isSolved).length;
-    $('summary').textContent = `${positions.length} positions · ${solved} solved`;
+    const marks = positions.filter(isIntended).length;
+    $('summary').textContent = `${positions.length} positions · ${solved} solved` + (marks ? ` · ${marks} marked as intended` : '');
   }
 
   function setNavEnabled(enabled) {
     for (const id of ['prev', 'next', 'retry', 'reveal']) $(id).disabled = !enabled;
+    if (!enabled) $('mark-intended').hidden = true;
     const link = $('lichess-link');
     link.hidden = !enabled;
     if (!enabled) link.removeAttribute('href');
@@ -279,6 +302,7 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     $('prompt').textContent = `Find the best move for ${turnColor(new Chess(pos.fen))}.`;
     $('counter').textContent = `${index + 1} / ${filtered.length}`;
     $('lichess-link').href = lichessAnalysisUrl(pos);
+    renderIntended(pos);
 
     const games = $('games');
     games.replaceChildren(document.createTextNode('Games: '));
@@ -308,6 +332,42 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     setActions({ retry: false, reveal: true, nextPrimary: false });
     renderList();
     ensureChecked(filtered[index]);
+  }
+
+  // ---------- moves marked as intended ----------
+
+  function renderIntended(pos) {
+    const usual = usualMove(pos);
+    const button = $('mark-intended');
+    button.hidden = !usual;
+    if (!usual) return;
+    const on = intended.has(usual.id);
+    button.textContent = on ? `Unmark ${usual.san} (judge it again)` : `${usual.san} is intended (gambit)`;
+    button.title = on
+      ? 'Judge this move again in the next analysis.'
+      : `You play ${usual.san} here on purpose: hide this position and skip the move in the next analysis.`;
+  }
+
+  function toggleIntended() {
+    const pos = filtered[index];
+    const usual = pos && usualMove(pos);
+    if (!usual) return;
+    const on = !intended.has(usual.id);
+    if (on) intended.add(usual.id);
+    else intended.delete(usual.id);
+    onIntendedChange?.(new Set(intended));
+    if (on && !filters().intended) {
+      // The position leaves the list; the next one takes its place.
+      filtered = filterPositions(positions, filters(), isSolved, isIntended);
+      show(Math.min(index, filtered.length - 1));
+      showFeedback('', `${usual.san} marked as intended`,
+        'Hidden from the list. The next analysis in this browser (“Update”) skips this move and looks for your next mistake in those games. “Show intended” lists it again.');
+      return;
+    }
+    renderIntended(pos);
+    renderList();
+    showFeedback('', on ? `${usual.san} marked as intended` : `${usual.san} is judged again`,
+      on ? 'The next analysis skips this move.' : 'The next analysis (“Update”) judges this move again.');
   }
 
   // ---------- lazy MultiPV on open ----------
@@ -366,8 +426,19 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
   }
 
   function applyFilters() {
-    filtered = filterPositions(positions, filters(), isSolved);
+    filtered = filterPositions(positions, filters(), isSolved, isIntended);
     show(0);
+  }
+
+  function applySort() {
+    sort = sortOrder($('filter-sort').value);
+    try {
+      storage.setItem(SORT_KEY, sort);
+    } catch {
+      // storage blocked: the order lasts for this page view
+    }
+    positions = sortPositions(positions, sort);
+    applyFilters();
   }
 
   // Refill the opening filter with the current counts, keeping the selection (also when its count is 0 now).
@@ -388,9 +459,9 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
    */
   function update(next) {
     const wasEmpty = !filtered.length;
-    positions = overlay(next.positions || []);
+    positions = sortPositions(overlay(next.positions || []), sort);
     fillOpeningFilter();
-    const merged = mergeList({ positions, filters: filters(), isSolved, filtered, index: wasEmpty ? -1 : index });
+    const merged = mergeList({ positions, filters: filters(), isSolved, isIntended, filtered, index: wasEmpty ? -1 : index });
     filtered = merged.filtered;
     if (wasEmpty) {
       show(0);
@@ -408,8 +479,12 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
   $('filter-opening').value = '';
   $('filter-color').value = '';
   $('filter-unsolved').checked = false;
+  $('filter-intended').checked = false;
+  $('filter-sort').value = sort;
   fillOpeningFilter();
-  for (const id of ['filter-opening', 'filter-color', 'filter-unsolved']) on($(id), 'change', applyFilters);
+  for (const id of ['filter-opening', 'filter-color', 'filter-unsolved', 'filter-intended']) on($(id), 'change', applyFilters);
+  on($('filter-sort'), 'change', applySort);
+  on($('mark-intended'), 'click', toggleIntended);
   on($('prev'), 'click', () => show(index - 1));
   on($('next'), 'click', () => show(index + 1));
   on($('retry'), 'click', retry);

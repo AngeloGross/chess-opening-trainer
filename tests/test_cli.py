@@ -30,6 +30,7 @@ def test_select_since():
     [
         ["analyse", "--depth", "0"],
         ["analyse", "--max-moves", "0"],
+        ["analyse", "--book-moves", "-1"],
         ["analyse", "--threshold", "-5"],
         ["fetch", "--max-games", "0"],
         ["fetch", "--since", "2024-13-01"],
@@ -45,6 +46,8 @@ def test_invalid_options_are_rejected(argv):
 def test_valid_options_parse():
     args = build_parser().parse_args(["update", "--depth", "12", "--max-games", "50", "--since", "2024-01-01"])
     assert (args.depth, args.max_games, args.since) == (12, 50, 1704067200000)
+    assert (args.max_moves, args.book_moves) == (12, 5)
+    assert build_parser().parse_args(["analyse", "--book-moves", "0"]).book_moves == 0
 
 
 def test_serve_sends_wasm_as_application_wasm():

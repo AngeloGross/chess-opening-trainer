@@ -2,6 +2,7 @@
 // Pure logic: the evaluator is injected and only needs `evaluate(fen) -> Promise<[bestUci|null, cp]>`,
 // with cp from the side to move's point of view.
 import { Chess } from '../vendor/chess.js@1.4.0/dist/esm/chess.js';
+import { NO_SKIP, skips } from './book.js';
 import { fenKey } from './fen.js';
 
 export const DECIDED_CP = 300;
@@ -49,14 +50,16 @@ export function sanOf(fen, uci) {
 
 /**
  * Scan the player's first `maxMoves` moves for the first loss >= threshold.
+ * Moves `skip` says are played on purpose (gambit book, marked as intended) are not judged.
  * @param {string[]} sans
  * @param {Color} color
  * @param {Evaluator} engine
  * @param {number} [maxMoves]
  * @param {number} [threshold]
+ * @param {import('./book.js').Skip} [skip]
  * @returns {Promise<GameResult>}
  */
-export async function analyseMoves(sans, color, engine, maxMoves = 15, threshold = 20) {
+export async function analyseMoves(sans, color, engine, maxMoves = 12, threshold = 20, skip = NO_SKIP) {
   const board = new Chess();
   const turn = color === 'white' ? 'w' : 'b';
   /** @type {GameResult} */
@@ -78,8 +81,9 @@ export async function analyseMoves(sans, color, engine, maxMoves = 15, threshold
 
     const key = fenKey(fen);
     result.reached.push(key);
-    const [best, evalBest] = await engine.evaluate(fen);
     const played = uciOf(move);
+    if (skips(skip, key, played, fullmove, board.fen())) continue; // the move is already on the board
+    const [best, evalBest] = await engine.evaluate(fen);
 
     if (best !== null && Math.abs(evalBest) <= DECIDED_CP && played !== best) {
       const [, evalAfter] = await engine.evaluate(board.fen()); // the move is already on the board
@@ -131,10 +135,11 @@ export function gameUrl(game, color, ply = null) {
  * @param {Evaluator} engine
  * @param {number} maxMoves
  * @param {number} threshold
+ * @param {import('./book.js').Skip} [skip]
  * @returns {Promise<GameResult|null>}
  */
-export async function analyseGame(game, user, engine, maxMoves, threshold) {
+export async function analyseGame(game, user, engine, maxMoves, threshold, skip = NO_SKIP) {
   const color = playerColor(game, user);
   if (color === null || !game.moves) return null;
-  return analyseMoves(game.moves.split(/\s+/).filter(Boolean), color, engine, maxMoves, threshold);
+  return analyseMoves(game.moves.split(/\s+/).filter(Boolean), color, engine, maxMoves, threshold, skip);
 }
