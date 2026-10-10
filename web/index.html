@@ -193,6 +193,14 @@
         </div>
         <div id="engine" hidden>
           <p id="engine-line" class="small" role="status" aria-live="polite"></p>
+          <div id="plan" hidden>
+            <div class="plan-nav">
+              <button id="plan-prev" type="button" aria-label="Previous move of the engine's plan">&#9664;</button>
+              <button id="plan-next" type="button" aria-label="Next move of the engine's plan">&#9654;</button>
+              <span id="plan-caption" class="small" role="status" aria-live="polite"></span>
+            </div>
+            <div id="plan-moves" class="plan-moves" aria-label="The engine's plan"></div>
+          </div>
           <button id="why" type="button" hidden>Why am I better?</button>
           <p id="why-text" role="status" aria-live="polite" hidden></p>
         </div>

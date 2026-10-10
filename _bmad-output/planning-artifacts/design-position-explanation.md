@@ -1,9 +1,9 @@
 # Design: "Why am I better?" — explaining a position advantage without extra material
 
-Status: **slice 1 built** (2026-10-10), slices 2–5 open. Builds on `architecture-browser-trainer.md`.
+Status: **slices 1–2 built** (2026-10-10), slices 3–5 open. Builds on `architecture-browser-trainer.md`.
 
 Decisions (2026-10-10): the eval appears **only after** the position is solved or revealed; the threshold
-for "Why am I better?" is **+0.8**. §10 records how slice 1 was built.
+for "Why am I better?" is **+0.8**. §10 and §11 record how slices 1 and 2 were built.
 
 ## 1. Request
 
@@ -213,3 +213,19 @@ plan shows *how* it is used. Slice 3 adds *why* in concepts.
 - **Checked** in headless Edge on the CLI analysis (Stockfish 19 Lite WASM, depth 14): 3 of 19 revealed
   positions offered "Why?"; all three verdicts were "in your next move" (D70 a4, D30 e4, D02 Qb3 with a pawn
   won by move 5), which matches the §2 probe.
+
+## 11. Slice 2 as built (2026-10-10)
+
+- **Steps:** `core/explain.js` `planSteps(fen, pv)` gives the first 8 plies (`STEPPER_PLIES`) with SAN, a
+  label ("4. Qb3", "4... Qb6"), whose move it is, the position after it and the material. Different from
+  §4.2: the stepper shows the **material on the board** (`core/material.js` `boardMaterial`), not the settled
+  material. Settled material counts a capture the side to move can make, so the change would show on the
+  opponent's move that allows the capture, which looked wrong on the board. The verdict keeps settled
+  material. `planCaption` writes "You: 5. cxd5 · you are a pawn up (material changes)".
+- **UI:** shown with the eval line for every answered position (not only from +0.8): ◀ ▶ and the moves as
+  buttons (the player's in bold, a dot where the material changes). Step k shows the position after k moves,
+  the last move highlighted and the next move as an arrow labelled k+1 (green for the player, blue for the
+  opponent). Step 0 is the answer as it was: entering the plan saves the board and going back restores it.
+  Next, Retry and a list change drop the plan.
+- **Checked** in headless Edge on D02 (Qb3): the arrows, labels and material marks, the board restored at
+  step 0, Retry, and no horizontal scroll at 390 px.

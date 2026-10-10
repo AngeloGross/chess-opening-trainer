@@ -14,9 +14,13 @@
 // revealed, `opts.explainer()` searches it ("Engine: +1.0 for you · material equal"). From +0.8 without extra
 // material a button asks for the verdict (core/explain.js). The eval is never shown before the answer: it
 // would hint that something is to be found.
+//
+// The engine's plan (slice 2): under the eval line, ◀ ▶ step through the first moves of the engine's line on
+// the board (core/explain.js planSteps), with a numbered arrow for the next move and the material after each
+// move. Step 0 is the answer as it was; going back to it restores the board.
 import { Chessground } from './vendor/chessground@9.2.1/dist/chessground.min.js';
 import { Chess } from './vendor/chess.js@1.4.0/dist/esm/chess.js';
-import { engineLine, offersWhy } from './core/explain.js';
+import { engineLine, offersWhy, planCaption, planSteps } from './core/explain.js';
 import {
   SORT_KEY, filterPositions, loadSort, loadStats, mergeList, openingCounts, sortOrder, sortPositions, statsKeyFor,
 } from './core/trainerList.js';
@@ -88,6 +92,8 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
   let held = null;
   let destroyed = false;
   let visit = 0; // bumped whenever the answer leaves the screen: late engine answers for it are dropped
+  /** @type {{fen: string, steps: import('./core/explain.js').PlanStep[], step: number, answer: any}|null} */
+  let plan = null; // the engine's plan of the answered position; answer = the board to go back to at step 0
 
   const cg = Chessground($('board'), {
     movable: { free: false, showDests: true, events: { after: onMove } },
@@ -202,7 +208,8 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     const usual = pos.played[0];
     const shapes = [arrow(pos.best, 'green')];
     if (usual && usual.uci !== pos.best) shapes.push(arrow(usual.uci, 'red'));
-    cg.setAutoShapes(shapes);
+    if (plan?.step) plan.answer.shapes = shapes; // stepping through the plan: shown when he steps back
+    else cg.setAutoShapes(shapes);
 
     const others = pos.acceptable.filter((u) => u !== pos.best).map((u) => sanOf(pos.fen, u));
     const parts = [`Best: ${pos.best_san} (green).`];
@@ -226,9 +233,62 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
 
   function hideEngine() {
     visit += 1;
+    plan = null; // the callers reset the board
     $('engine').hidden = true;
     $('why').hidden = true;
     $('why-text').hidden = true;
+    $('plan').hidden = true;
+  }
+
+  function showPlan(fen, pv) {
+    const steps = planSteps(fen, pv);
+    if (!steps.length) return;
+    plan = { fen, steps, step: 0, answer: null };
+    const moves = $('plan-moves');
+    moves.replaceChildren(...steps.map((s, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `plan-move${s.mine ? ' mine' : ''}${s.changed ? ' changed' : ''}`;
+      b.textContent = s.label;
+      if (s.changed) b.title = 'material changes';
+      b.addEventListener('click', () => planGo(i + 1));
+      return b;
+    }));
+    $('plan').hidden = false;
+    renderPlan();
+  }
+
+  /** Show step `k` of the plan (0 = the answer as it was). */
+  function planGo(k) {
+    if (!plan) return;
+    k = Math.max(0, Math.min(plan.steps.length, k));
+    if (k === plan.step) return;
+    if (plan.step === 0) {
+      plan.answer = { fen: cg.getFen(), lastMove: cg.state.lastMove, check: !!cg.state.check, turnColor: cg.state.turnColor,
+        shapes: [...cg.state.drawable.autoShapes] };
+    }
+    plan.step = k;
+    if (k === 0) {
+      const a = plan.answer;
+      cg.set({ fen: a.fen, lastMove: a.lastMove, check: a.check, turnColor: a.turnColor });
+      cg.setAutoShapes(a.shapes);
+    } else {
+      const s = plan.steps[k - 1];
+      const game = new Chess(s.fen);
+      cg.set({ fen: s.fen, lastMove: [s.uci.slice(0, 2), s.uci.slice(2, 4)], turnColor: turnColor(game), check: game.inCheck(),
+        movable: { color: undefined, dests: new Map() } });
+      const next = plan.steps[k];
+      cg.setAutoShapes(next ? [{ ...arrow(next.uci, next.mine ? 'green' : 'blue'), label: { text: String(k + 1) } }] : []);
+    }
+    renderPlan();
+  }
+
+  function renderPlan() {
+    const { steps, step, fen } = plan;
+    $('plan-caption').textContent = planCaption(steps, step, fen);
+    $('plan-prev').disabled = step === 0;
+    $('plan-next').disabled = step === steps.length;
+    [...$('plan-moves').children].forEach((b, i) => b.classList.toggle('current', i === step - 1));
   }
 
   /** The eval line for the answered position, then the button when it qualifies. */
@@ -244,6 +304,7 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
       $('engine-line').textContent = engineLine(ev);
       $('why').hidden = !offersWhy(ev);
       $('why').disabled = false;
+      showPlan(pos.fen, ev.pv);
     }, (err) => {
       if (!current()) return;
       console.warn('engine line failed', err);
@@ -490,6 +551,8 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
   on($('next'), 'click', () => show(index + 1));
   on($('retry'), 'click', retry);
   on($('reveal'), 'click', reveal);
+  on($('plan-prev'), 'click', () => planGo((plan?.step ?? 0) - 1));
+  on($('plan-next'), 'click', () => planGo((plan?.step ?? 0) + 1));
   on(document, 'keydown', (e) => {
     if (root.hidden) return;
     if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;

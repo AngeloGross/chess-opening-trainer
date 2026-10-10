@@ -109,7 +109,9 @@ Once a position is solved or revealed, the engine's eval appears under it ("Engi
 material equal"); it is not shown before, as it would hint that there is something to find. From +0.8
 without extra material, "Why am I better?" tells what kind of advantage it is: the engine also looks at
 the position as if you passed. If you would keep most of the advantage, your position itself is better;
-otherwise the advantage is in your next move. It also says when best play wins material.
+otherwise the advantage is in your next move. It also says when best play wins material. Below the
+eval, the arrow buttons play the engine's line on the board, move by move, with the next move as a
+numbered arrow; moves that change the material are marked with a dot.
 
 ### Testing on your phone
 

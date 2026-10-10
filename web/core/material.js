@@ -37,6 +37,16 @@ function quiescence(board, alpha, beta, plies) {
 }
 
 /**
+ * White's material minus Black's as it stands on the board.
+ * @param {string} fen @returns {number}
+ */
+export function boardMaterial(fen) {
+  const board = new Chess(fen);
+  const m = material(board);
+  return board.turn() === 'w' ? m : 0 - m;
+}
+
+/**
  * White's material minus Black's once the captures on the board are played out (pawn = 1, knight and bishop 3,
  * rook 5, queen 9).
  * @param {string} fen @returns {number}

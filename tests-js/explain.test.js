@@ -3,7 +3,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createExplainer } from '../web/analysis/explainer.js';
-import { engineLine, formatEval, offersWhy, passFen, planGain, playerMaterial, verdict } from '../web/core/explain.js';
+import {
+  engineLine, formatEval, materialText, offersWhy, passFen, planCaption, planGain, planSteps, playerMaterial, verdict,
+} from '../web/core/explain.js';
 import { MATE_CP, fenKey } from '../web/core/fen.js';
 import { settledMaterial } from '../web/core/material.js';
 
@@ -71,6 +73,32 @@ describe('planGain', () => {
     expect(planGain(START, ['e2e4', 'd7d5', 'e4d5', 'g8f6', 'f1c4', 'f6d5'])).toBeNull(); // the d5 pawn is taken back
     expect(planGain(FORK, ['d2d4', 'a1a8'])).toBeNull();
     expect(planGain(START, ['e2e4', 'e7e5'])).toBeNull();
+  });
+});
+
+describe('planSteps', () => {
+  it('labels the moves, marks whose they are and where the material changes', () => {
+    const steps = planSteps(FORK, ['d2d4', 'e5c6', 'd4c5', 'e8d7']);
+    expect(steps.map((s) => [s.label, s.mine, s.material, s.changed])).toEqual([
+      ['1. d4', true, -5, false], ['1... Nc6', false, -5, false], ['2. dxc5', true, -2, true], ['2... Kd7', false, -2, false],
+    ]);
+    expect(steps[0].fen).toBe('4k3/8/8/2n1n3/3P4/8/8/4K3 b - - 0 1');
+  });
+
+  it('starts with Black, stops at an illegal move and at STEPPER_PLIES', () => {
+    expect(planSteps(BLACK_TO_MOVE, ['b8c6', 'f1b5']).map((s) => [s.label, s.mine])).toEqual([['2... Nc6', true], ['3. Bb5', false]]);
+    expect(planSteps(BLACK_TO_MOVE, ['b8c6', 'a1a8', 'f1b5'])).toHaveLength(1);
+    const long = ['g1f3', 'g8f6', 'f3g1', 'f6g8', 'g1f3', 'g8f6', 'f3g1', 'f6g8', 'g1f3', 'g8f6'];
+    expect(planSteps(START, long)).toHaveLength(8);
+  });
+
+  it('captions the steps', () => {
+    const steps = planSteps(FORK, ['d2d4', 'e5c6', 'd4c5']);
+    expect(planCaption(steps, 0, FORK)).toBe('Your position: you are 5 pawns down. \u25B6 plays the engine\'s line.');
+    expect(planCaption(steps, 1, FORK)).toBe('You: 1. d4 \u00b7 you are 5 pawns down');
+    expect(planCaption(steps, 2, FORK)).toBe('Then: 1... Nc6 \u00b7 you are 5 pawns down');
+    expect(planCaption(steps, 3, FORK)).toBe('You: 2. dxc5 \u00b7 you are 2 pawns down (material changes)');
+    expect(materialText(0)).toBe('material equal');
   });
 });
 

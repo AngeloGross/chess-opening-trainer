@@ -112,6 +112,14 @@ button:disabled { opacity: 0.5; cursor: default; }
 #engine { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; }
 #engine-line { margin: 0; color: var(--muted); }
 #why { margin-top: 8px; }
+#plan { margin-top: 8px; }
+.plan-nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.plan-nav button { padding: 4px 12px; }
+.plan-moves { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.plan-move { padding: 2px 6px; font-size: 0.85rem; border-color: transparent; background: transparent; }
+.plan-move.mine { font-weight: 600; }
+.plan-move.changed::after { content: " \2022"; color: var(--bad); }
+.plan-move.current { background: var(--selected); border-color: var(--border); }
 #why-text { margin: 8px 0 0; }
 
 @media (max-width: 900px) {

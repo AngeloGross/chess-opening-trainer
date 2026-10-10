@@ -6,9 +6,11 @@
 //   searches the position with the opponent to move (the player passes). If the player keeps at least
 //   STATIC_SHARE of his advantage, the position itself is better; otherwise the advantage is in his next move.
 //   If best play wins material within the engine's line, the verdict says when.
+// - Plan (slice 2): the first STEPPER_PLIES plies of the engine's line as steps for the stepper under the
+//   board, each with the settled material after it.
 import { Chess } from '../vendor/chess.js@1.4.0/dist/esm/chess.js';
 import { MATE_CP } from './fen.js';
-import { settledMaterial } from './material.js';
+import { boardMaterial, settledMaterial } from './material.js';
 
 /** "Why am I better?" is offered from this eval on (cp for the player). */
 export const WHY_THRESHOLD = 80;
@@ -16,6 +18,8 @@ export const WHY_THRESHOLD = 80;
 export const STATIC_SHARE = 0.6;
 /** Plies of the engine's line that are searched for a material gain. */
 export const PLAN_PLIES = 12;
+/** Plies of the engine's line the stepper shows. */
+export const STEPPER_PLIES = 8;
 /** Evals at least this far from 0 are forced mates (MATE_CP, as engine.py maps them). */
 const MATE_LIMIT = MATE_CP - 1000;
 
@@ -49,6 +53,11 @@ export function playerMaterial(fen) {
   return new Chess(fen).turn() === 'w' ? m : -m;
 }
 
+/** "material equal", "you are a pawn up", "you are 2 pawns down" @param {number} material  for the player */
+export function materialText(material) {
+  return material === 0 ? 'material equal' : material > 0 ? `you are ${pawns(material)} up` : `you are ${pawns(-material)} down`;
+}
+
 /**
  * The line under the answer: "Engine: +1.0 for you · material equal".
  * @param {{evalCp: number, material: number}} p  both for the player (the side to move)
@@ -56,8 +65,7 @@ export function playerMaterial(fen) {
  */
 export function engineLine({ evalCp, material }) {
   const value = isMate(evalCp) ? (evalCp > 0 ? 'a forced mate for you' : 'a forced mate against you') : `${formatEval(evalCp)} for you`;
-  const mat = material === 0 ? 'material equal' : material > 0 ? `you are ${pawns(material)} up` : `you are ${pawns(-material)} down`;
-  return `Engine: ${value} · ${mat}`;
+  return `Engine: ${value} · ${materialText(material)}`;
 }
 
 /**
@@ -156,6 +164,62 @@ export function verdict({ fen, evalCp, passCp, material, pv = [] }) {
   }
   const ifPass = isMate(passCp) ? (passCp > 0 ? 'still a forced mate' : `a forced mate for ${them}`) : `about ${formatEval(passCp)}`;
   return done('dynamic', `Your advantage is in your next move${best ? `, ${best}` : ''} (${now} now, ${ifPass} if you did nothing).`);
+}
+
+/**
+ * @typedef {object} PlanStep
+ * @property {string} uci
+ * @property {string} san
+ * @property {boolean} mine  the player's move (else the opponent's)
+ * @property {string} label  "3. Bd3" or "3... e6"
+ * @property {string} fen  the position after the move
+ * @property {number} material  material on the board for the player after the move (not settled: what he sees)
+ * @property {boolean} changed  the material differs from the step before (or the quiz position)
+ */
+
+/**
+ * The engine's line as stepper steps, at most `plies` long; it stops at a move that is not legal.
+ * @param {string} fen  the quiz position, the player to move
+ * @param {string[]} pv  UCI
+ * @param {number} [plies]
+ * @returns {PlanStep[]}
+ */
+export function planSteps(fen, pv, plies = STEPPER_PLIES) {
+  const board = new Chess(fen);
+  const me = board.turn();
+  const mine = (f) => (me === 'w' ? boardMaterial(f) : 0 - boardMaterial(f));
+  let before = mine(fen);
+  const steps = [];
+  for (const uci of pv.slice(0, plies)) {
+    const turn = board.turn();
+    const number = board.moveNumber();
+    let move;
+    try {
+      move = board.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
+    } catch {
+      break;
+    }
+    const after = board.fen();
+    const material = mine(after);
+    steps.push({ uci, san: move.san, mine: turn === me, label: `${number}${turn === 'w' ? '.' : '...'} ${move.san}`,
+      fen: after, material, changed: material !== before });
+    before = material;
+  }
+  return steps;
+}
+
+/**
+ * The caption of stepper step `k` (0 = the quiz position, k = after the k-th move of `steps`).
+ * @param {PlanStep[]} steps @param {number} k @param {string} fen  the quiz position
+ */
+export function planCaption(steps, k, fen) {
+  if (k === 0) {
+    const m = boardMaterial(fen);
+    return `Your position: ${materialText(new Chess(fen).turn() === 'w' ? m : 0 - m)}. ▶ plays the engine's line.`;
+  }
+  const s = steps[k - 1];
+  const who = s.mine ? 'You' : 'Then';
+  return `${who}: ${s.label} · ${materialText(s.material)}${s.changed ? ' (material changes)' : ''}`;
 }
 
 function sanOrUci(fen, uci) {
