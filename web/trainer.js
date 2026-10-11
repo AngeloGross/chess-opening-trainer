@@ -18,9 +18,13 @@
 // The engine's plan (slice 2): under the eval line, ◀ ▶ step through the first moves of the engine's line on
 // the board (core/explain.js planSteps), with a numbered arrow for the next move and the material after each
 // move. Step 0 is the answer as it was; going back to it restores the board.
+//
+// Likely reasons (slice 3): under the verdict, up to three reasons from core/features.js. Tapping one draws its
+// highlights on the board, at the plan step it is about (the answer, after his move or after the reply).
 import { Chessground } from './vendor/chessground@9.2.1/dist/chessground.min.js';
 import { Chess } from './vendor/chess.js@1.4.0/dist/esm/chess.js';
 import { engineLine, offersWhy, planCaption, planSteps } from './core/explain.js';
+import { NO_REASON } from './core/features.js';
 import {
   SORT_KEY, filterPositions, loadSort, loadStats, mergeList, openingCounts, sortOrder, sortPositions, statsKeyFor,
 } from './core/trainerList.js';
@@ -94,6 +98,8 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
   let visit = 0; // bumped whenever the answer leaves the screen: late engine answers for it are dropped
   /** @type {{fen: string, steps: import('./core/explain.js').PlanStep[], step: number, answer: any}|null} */
   let plan = null; // the engine's plan of the answered position; answer = the board to go back to at step 0
+  /** @type {object[]|null} */
+  let answerShapes = null; // the answer's arrows while a reason's highlights are drawn over them at step 0
 
   const cg = Chessground($('board'), {
     movable: { free: false, showDests: true, events: { after: onMove } },
@@ -209,6 +215,7 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     const shapes = [arrow(pos.best, 'green')];
     if (usual && usual.uci !== pos.best) shapes.push(arrow(usual.uci, 'red'));
     if (plan?.step) plan.answer.shapes = shapes; // stepping through the plan: shown when he steps back
+    else if (answerShapes) answerShapes = shapes; // a reason is drawn over the answer
     else cg.setAutoShapes(shapes);
 
     const others = pos.acceptable.filter((u) => u !== pos.best).map((u) => sanOf(pos.fen, u));
@@ -234,9 +241,11 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
   function hideEngine() {
     visit += 1;
     plan = null; // the callers reset the board
+    answerShapes = null;
     $('engine').hidden = true;
     $('why').hidden = true;
     $('why-text').hidden = true;
+    $('why-reasons').hidden = true;
     $('plan').hidden = true;
   }
 
@@ -265,7 +274,8 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     if (k === plan.step) return;
     if (plan.step === 0) {
       plan.answer = { fen: cg.getFen(), lastMove: cg.state.lastMove, check: !!cg.state.check, turnColor: cg.state.turnColor,
-        shapes: [...cg.state.drawable.autoShapes] };
+        shapes: answerShapes ?? [...cg.state.drawable.autoShapes] };
+      answerShapes = null;
     }
     plan.step = k;
     if (k === 0) {
@@ -289,6 +299,41 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     $('plan-prev').disabled = step === 0;
     $('plan-next').disabled = step === steps.length;
     [...$('plan-moves').children].forEach((b, i) => b.classList.toggle('current', i === step - 1));
+    markReason(null);
+  }
+
+  /** The verdict's likely reasons, each a button that draws its highlights. */
+  function showReasons(reasons) {
+    const list = $('why-list');
+    if (!reasons.length) {
+      const li = document.createElement('li');
+      li.textContent = NO_REASON;
+      list.replaceChildren(li);
+    } else {
+      list.replaceChildren(...reasons.map((r) => {
+        const li = document.createElement('li');
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'reason';
+        b.textContent = r.text;
+        b.addEventListener('click', () => showReason(r, b));
+        li.append(b);
+        return li;
+      }));
+    }
+    $('why-reasons').hidden = false;
+  }
+
+  function showReason(reason, button) {
+    const step = plan ? Math.min(reason.step, plan.steps.length) : 0;
+    if (plan && step !== plan.step) planGo(step);
+    if (step === 0 && !answerShapes) answerShapes = [...cg.state.drawable.autoShapes];
+    cg.setAutoShapes(reason.shapes);
+    markReason(button);
+  }
+
+  function markReason(button) {
+    for (const b of $('why-list').querySelectorAll('.reason')) b.classList.toggle('current', b === button);
   }
 
   /** The eval line for the answered position, then the button when it qualifies. */
@@ -315,7 +360,9 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
       $('why-text').hidden = false;
       $('why-text').textContent = 'Working it out…';
       ex.verdict(pos.fen).then((v) => {
-        if (current()) $('why-text').textContent = v.text;
+        if (!current()) return;
+        $('why-text').textContent = v.text;
+        showReasons(v.reasons ?? []);
       }, (err) => {
         if (!current()) return;
         console.warn('verdict failed', err);

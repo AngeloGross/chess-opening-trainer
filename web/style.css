@@ -121,6 +121,11 @@ button:disabled { opacity: 0.5; cursor: default; }
 .plan-move.changed::after { content: " \2022"; color: var(--bad); }
 .plan-move.current { background: var(--selected); border-color: var(--border); }
 #why-text { margin: 8px 0 0; }
+#why-reasons p { margin: 8px 0 4px; color: var(--muted); }
+#why-list { margin: 0; padding-left: 1.4em; }
+#why-list li { margin: 2px 0; }
+.reason { display: block; width: 100%; padding: 4px 6px; text-align: left; font: inherit; border-color: transparent; background: transparent; }
+.reason.current { background: var(--selected); border-color: var(--border); }
 
 @media (max-width: 900px) {
   main { grid-template-columns: 1fr; }

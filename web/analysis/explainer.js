@@ -2,10 +2,11 @@
 //
 // `evaluation(fen)`: one single-PV search of the quiz position, with its principal variation (the eval line
 // under a solved or revealed position). `verdict(fen)`: that plus one search of the position with the
-// opponent to move (core/explain.js passFen). Both are remembered for the page view; nothing is stored, so
+// opponent to move (core/explain.js passFen), and the likely reasons (core/features.js, no extra search). Both are remembered for the page view; nothing is stored, so
 // the eval cache, positions.json and backups stay as they are. The pool is injected (engine/pool.js
 // EnginePool#analyse, which runs terminal positions without the engine).
 import { passFen, playerMaterial, verdict } from '../core/explain.js';
+import { reasons } from '../core/features.js';
 import { fenKey } from '../core/fen.js';
 
 /**
@@ -35,13 +36,18 @@ export function createExplainer({ analyse, depth }) {
     });
   }
 
-  /** @param {string} fen @returns {Promise<import('../core/explain.js').Verdict & {evaluation: Evaluation, passCp: number|null}>} */
+  /**
+   * @param {string} fen
+   * @returns {Promise<import('../core/explain.js').Verdict & {evaluation: Evaluation, passCp: number|null,
+   *   reasons: import('../core/features.js').Reason[]}>}
+   */
   function verdictOf(fen) {
     return once(`verdict|${fenKey(fen)}`, async () => {
       const pass = passFen(fen);
       const [ev, passed] = await Promise.all([evaluation(fen), pass ? search(pass) : null]);
       const passCp = passed ? -passed.cp : null;
-      return { ...verdict({ fen, evalCp: ev.evalCp, passCp, material: ev.material, pv: ev.pv }), evaluation: ev, passCp };
+      return { ...verdict({ fen, evalCp: ev.evalCp, passCp, material: ev.material, pv: ev.pv }), evaluation: ev, passCp,
+        reasons: reasons({ fen, pv: ev.pv }) };
     });
   }
 

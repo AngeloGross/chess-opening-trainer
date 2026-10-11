@@ -158,7 +158,9 @@ describe('createExplainer', () => {
     const fake = fakeAnalyse({ [fenKey(A40)]: { cp: 89, pv: ['e2e4', 'c8b7'] }, [fenKey(pass)]: { cp: 5, pv: ['c8b7'] } });
     const ex = createExplainer({ analyse: fake.analyse, depth: 12 });
     expect(await ex.evaluation(A40)).toEqual({ evalCp: 89, pv: ['e2e4', 'c8b7'], material: 0 });
-    expect(await ex.verdict(A40)).toMatchObject({ kind: 'dynamic', passCp: -5, evaluation: { evalCp: 89 } });
+    const v = await ex.verdict(A40);
+    expect(v).toMatchObject({ kind: 'dynamic', passCp: -5, evaluation: { evalCp: 89 } });
+    expect(v.reasons.map((r) => r.id)).toEqual(['centre']); // from the PV, no extra search
     await ex.verdict(A40);
     await ex.evaluation(A40);
     expect(fake.calls).toEqual([[fenKey(A40), 12, 1], [fenKey(pass), 12, 1]]);

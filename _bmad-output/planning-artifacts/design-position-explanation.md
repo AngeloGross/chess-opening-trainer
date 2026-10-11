@@ -1,9 +1,9 @@
 # Design: "Why am I better?" — explaining a position advantage without extra material
 
-Status: **slices 1–2 built** (2026-10-10), slices 3–5 open. Builds on `architecture-browser-trainer.md`.
+Status: **slices 1–3 built** (2026-10-10/11), slices 4–5 open. Builds on `architecture-browser-trainer.md`.
 
 Decisions (2026-10-10): the eval appears **only after** the position is solved or revealed; the threshold
-for "Why am I better?" is **+0.8**. §10 and §11 record how slices 1 and 2 were built.
+for "Why am I better?" is **+0.8**. §10, §11 and §12 record how slices 1, 2 and 3 were built.
 
 ## 1. Request
 
@@ -229,3 +229,35 @@ plan shows *how* it is used. Slice 3 adds *why* in concepts.
   Next, Retry and a list change drop the plan.
 - **Checked** in headless Edge on D02 (Qb3): the arrows, labels and material marks, the board restored at
   step 0, Retry, and no horizontal scroll at 390 px.
+
+## 12. Slice 3 as built (2026-10-11)
+
+- **Catalogue:** `core/features.js` `features(fen)` measures per side: centre pawns and attacks on d4 e4 d5
+  e5; minor pieces still on their first squares and castled; king in the centre with files d–f without an
+  own pawn, castling rights, missing shield pawns, attacked squares next to the king; isolated, doubled,
+  backward and pressured (more attackers than defenders) pawns; legal moves of knights, bishops, rooks and
+  queens (the side not to move through `passFen`, none in check), bishop pair, knight outposts, rooks on files
+  without an own pawn; squares in the opponent's half the pawns attack. Public chess.js API only (two
+  positions per explanation, so the SAN cost does not matter here).
+- **Reasons:** `reasons({fen, pv})` compares the player with the opponent in the quiz position and after PV
+  ply 2 (taken from the explainer's PV, no extra search). Different from §4.3: when the plan improves a
+  concept, the reason describes the position **after the plan** ("Centre: after 2. e4 Bb7, you have 2 pawns
+  in the centre (d4 and e4), Black none"), else the quiz position if the advantage survives the reply (at
+  least half the threshold). The threat is not an engine null-move search but the capture search:
+  `core/material.js` `bestCapture` on the position after the engine's move with the opponent passing ("4.
+  Qb3 threatens cxd5, which wins a pawn if Black does nothing about it"). A capture as the engine's move is
+  never called a threat (it is a trade). Each reason has highlights and the plan step they belong to (0, 1
+  for a threat, 2 after the reply).
+- **Thresholds** (rough cp, `CONCEPTS[].min`): centre 45, development 45, king 50, pawns 30, activity 50,
+  space 60. Tuned on the CLI analysis with `tools/probe_explanations.py` (native Stockfish 19, depth 14:
+  96 positions qualify, 79 of them dynamic) and `tools/explain_report.mjs`. Result: 72 of 96 get at least
+  one reason; reasons by concept: centre 50, threat 26, activity 17, development 10, pawns 5; king and space
+  never pass on this data (both are still unit-tested). Positions whose best move is a capture (a trade) or
+  a quiet improving move mostly get "No simple reason found".
+- **UI:** under the verdict, "Likely reasons (simple checks, not the engine's own words)" and a numbered
+  list; tapping a reason moves the stepper to its step and draws its shapes, stepping clears the mark. The
+  answer's arrows are kept and come back at step 0.
+- **Checked** in headless Edge on the CLI analysis (WASM, depth 14): D70 (centre, step 0), D30 e4 (centre
+  after 5. e4 Ne7, step 2), D02 Qb3 (threat cxd5, step 1); no horizontal scroll at 390 px.
+- **For slice 4:** `tools/explain_report.mjs` already prints all explanations; the review page can be built
+  from the same `data/why-positions.json`.
