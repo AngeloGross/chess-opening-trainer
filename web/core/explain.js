@@ -1,7 +1,8 @@
 // "Why am I better?" (design-position-explanation.md, slice 1): the engine line under a solved or revealed
 // position and the verdict on what kind of advantage the player has. Pure: the engine results come in.
 //
-// - Eval line: "Engine: +1.0 for you · material equal", from one search of the quiz position.
+// - Eval line: "Engine: +1.0 (White is better) after the best move, e4 · material equal", from one search of
+//   the quiz position. Evals are shown from White's side, as usual: + is good for White, − for Black.
 // - Verdict, for positions at WHY_THRESHOLD or more without extra material: the pass test. The engine also
 //   searches the position with the opponent to move (the player passes). If the player keeps at least
 //   STATIC_SHARE of his advantage, the position itself is better; otherwise the advantage is in his next move.
@@ -20,6 +21,8 @@ export const STATIC_SHARE = 0.6;
 export const PLAN_PLIES = 12;
 /** Plies of the engine's line the stepper shows. */
 export const STEPPER_PLIES = 8;
+/** Evals closer to 0 than this (cp) read as "about equal". */
+export const EQUAL_CP = 25;
 /** Evals at least this far from 0 are forced mates (MATE_CP, as engine.py maps them). */
 const MATE_LIMIT = MATE_CP - 1000;
 
@@ -33,6 +36,18 @@ export function formatEval(cp) {
 }
 
 const isMate = (cp) => Math.abs(cp) >= MATE_LIMIT;
+
+/** An eval for the side to move `turn` seen from White's side. @param {number} cp @param {'w'|'b'} turn */
+export function whiteCp(cp, turn) {
+  return turn === 'w' ? cp : 0 - cp;
+}
+
+/** "+1.0 (White is better)", "−0.3 (Black is better)", "+0.1 (about equal)", "a forced mate for White" @param {number} cp  White's view */
+export function evalLabel(cp) {
+  if (isMate(cp)) return cp > 0 ? 'a forced mate for White' : 'a forced mate for Black';
+  const who = Math.abs(cp) < EQUAL_CP ? 'about equal' : cp > 0 ? 'White is better' : 'Black is better';
+  return `${formatEval(cp)} (${who})`;
+}
 
 /** "a pawn", "2 pawns", ... @param {number} n */
 function pawns(n) {
@@ -59,13 +74,13 @@ export function materialText(material) {
 }
 
 /**
- * The line under the answer: "Engine: +1.0 for you · material equal".
- * @param {{evalCp: number, material: number}} p  both for the player (the side to move)
+ * The line under the answer: "Engine: +1.0 (White is better) after the best move, e4 · material equal".
+ * @param {{evalCp: number, material: number, turn?: 'w'|'b', best?: string|null}} p  evalCp and material for
+ *   the player (the side to move, `turn`); best: the engine's move in SAN
  * @returns {string}
  */
-export function engineLine({ evalCp, material }) {
-  const value = isMate(evalCp) ? (evalCp > 0 ? 'a forced mate for you' : 'a forced mate against you') : `${formatEval(evalCp)} for you`;
-  return `Engine: ${value} · ${materialText(material)}`;
+export function engineLine({ evalCp, material, turn = 'w', best = null }) {
+  return `Engine: ${evalLabel(whiteCp(evalCp, turn))}${best ? ` after the best move, ${best}` : ' with best play'} · ${materialText(material)}`;
 }
 
 /**
@@ -141,7 +156,9 @@ export function planGain(fen, pv) {
  */
 export function verdict({ fen, evalCp, passCp, material, pv = [] }) {
   const board = new Chess(fen);
-  const them = sideName(board.turn() === 'w' ? 'b' : 'w');
+  const turn = board.turn();
+  const them = sideName(turn === 'w' ? 'b' : 'w');
+  const show = (cp) => formatEval(whiteCp(cp, turn)); // the numbers from White's side, like the eval line
   const plan = pv.length ? planGain(fen, pv) : null;
   const best = pv.length ? sanOrUci(fen, pv[0]) : null;
   const tail = [];
@@ -153,16 +170,16 @@ export function verdict({ fen, evalCp, passCp, material, pv = [] }) {
 
   if (isMate(evalCp)) return { kind: 'mate', text: evalCp > 0 ? 'You have a forced mate.' : 'You are getting mated.', plan: null };
   if (material >= 1) return done('material', `You are ${pawns(material)} up (once the captures on the board are played out).`);
-  const now = formatEval(evalCp);
+  const now = show(evalCp);
   if (passCp === null) {
     return done('check', `You are in check, so there is nothing to compare: your advantage (${now}) is in how you answer it`
       + `${best ? `, with ${best}` : ''}.`);
   }
   if (passCp >= STATIC_SHARE * evalCp) {
-    return done('static', `Your position itself is better (${now}): even if it were ${them}'s move, you would keep`
-      + ` ${formatEval(passCp)}.`);
+    return done('static', `Your position itself is better (${now}): even if it were ${them}'s move, the engine would still`
+      + ` give ${show(passCp)}.`);
   }
-  const ifPass = isMate(passCp) ? (passCp > 0 ? 'still a forced mate' : `a forced mate for ${them}`) : `about ${formatEval(passCp)}`;
+  const ifPass = isMate(passCp) ? (passCp > 0 ? 'still a forced mate' : `a forced mate for ${them}`) : `about ${show(passCp)}`;
   return done('dynamic', `Your advantage is in your next move${best ? `, ${best}` : ''} (${now} now, ${ifPass} if you did nothing).`);
 }
 

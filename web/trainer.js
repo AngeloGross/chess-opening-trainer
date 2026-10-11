@@ -13,7 +13,10 @@
 // Engine line and "Why am I better?" (design-position-explanation.md, slice 1): once a position is solved or
 // revealed, `opts.explainer()` searches it ("Engine: +1.0 for you · material equal"). From +0.8 without extra
 // material a button asks for the verdict (core/explain.js). The eval is never shown before the answer: it
-// would hint that something is to be found.
+// would hint that something is to be found. Evals are shown from White's side (+ White, − Black).
+//
+// Played moves: after a move other than the engine's best, the eval after it is searched and added to the
+// feedback ("After Nf3: +0.2 (about equal)") and listed in the engine box for the rest of the visit.
 //
 // The engine's plan (slice 2): under the eval line, ◀ ▶ step through the first moves of the engine's line on
 // the board (core/explain.js planSteps), with a numbered arrow for the next move and the material after each
@@ -23,7 +26,7 @@
 // highlights on the board, at the plan step it is about (the answer, after his move or after the reply).
 import { Chessground } from './vendor/chessground@9.2.1/dist/chessground.min.js';
 import { Chess } from './vendor/chess.js@1.4.0/dist/esm/chess.js';
-import { engineLine, offersWhy, planCaption, planSteps } from './core/explain.js';
+import { engineLine, evalLabel, offersWhy, planCaption, planSteps, whiteCp } from './core/explain.js';
 import { NO_REASON } from './core/features.js';
 import {
   SORT_KEY, filterPositions, loadSort, loadStats, mergeList, openingCounts, sortOrder, sortPositions, statsKeyFor,
@@ -100,6 +103,9 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
   let plan = null; // the engine's plan of the answered position; answer = the board to go back to at step 0
   /** @type {object[]|null} */
   let answerShapes = null; // the answer's arrows while a reason's highlights are drawn over them at step 0
+  /** @type {{key: string|null, moves: Array<{uci: string, san: string, text: string|null}>}} */
+  let tried = { key: null, moves: [] }; // his moves in this visit other than the best, with the eval after them
+  let feedbackFor = null; // the move the feedback is about, for its eval arriving later
 
   const cg = Chessground($('board'), {
     movable: { free: false, showDests: true, events: { after: onMove } },
@@ -184,6 +190,7 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     const move = { san };
     const correct = pos.acceptable.includes(uci);
     record(pos.key, correct);
+    feedbackFor = uci;
     if (correct) {
       cg.setAutoShapes([arrow(uci, 'green')]);
       const note = uci === pos.best ? 'That is the engine\'s best move.' : `Also good. Engine best: ${pos.best_san}.`;
@@ -194,7 +201,49 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
       showFeedback('bad', `Not quite: ${move.san}`, 'Try again or reveal the answer.');
       setActions({ retry: true, reveal: true, nextPrimary: false });
     }
+    if (uci !== pos.best) evaluateMove(pos, uci, san);
     renderList();
+  }
+
+  /** The eval after a played move other than the best: into the feedback and the engine box. */
+  function evaluateMove(pos, uci, san) {
+    const ex = explainer?.();
+    if (!ex) return;
+    if (tried.key !== pos.key) tried = { key: pos.key, moves: [] };
+    let entry = tried.moves.find((m) => m.uci === uci);
+    if (!entry) {
+      entry = { uci, san, text: null };
+      tried.moves.push(entry);
+    }
+    const board = new Chess(pos.fen);
+    board.move(uciParts(uci));
+    const after = board.fen();
+    const turn = board.turn();
+    const show = () => {
+      if (destroyed || filtered[index]?.key !== pos.key) return;
+      if (feedbackFor === uci) {
+        const el = $('feedback').querySelector('.detail');
+        if (el && !el.dataset.eval) {
+          el.dataset.eval = '1';
+          el.textContent = `After ${san}: ${entry.text}. ${el.textContent}`;
+        }
+      }
+      renderTried(pos);
+    };
+    if (entry.text) show();
+    else {
+      ex.evaluation(after).then((ev) => {
+        entry.text = evalLabel(whiteCp(ev.evalCp, turn));
+        show();
+      }, (err) => console.warn('eval after the move failed', err));
+    }
+  }
+
+  /** "Your moves: Nf3 +0.2 (about equal) · e3 +0.1 (about equal)" in the engine box. */
+  function renderTried(pos) {
+    const moves = tried.key === pos.key ? tried.moves.filter((m) => m.text) : [];
+    $('engine-moves').hidden = !moves.length;
+    $('engine-moves').textContent = moves.length ? `After your moves: ${moves.map((m) => `${m.san} ${m.text}`).join(' · ')}` : '';
   }
 
   function reveal() {
@@ -344,9 +393,12 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
     const current = () => !destroyed && mine === visit && filtered[index]?.key === pos.key;
     $('engine').hidden = false;
     $('engine-line').textContent = 'Engine: thinking…';
+    renderTried(pos);
     ex.evaluation(pos.fen).then((ev) => {
       if (!current()) return;
-      $('engine-line').textContent = engineLine(ev);
+      // The move is named only when this search agrees with the answer's best move (they can differ in depth).
+      const best = ev.pv[0] === pos.best ? pos.best_san : null;
+      $('engine-line').textContent = engineLine({ ...ev, turn: pos.fen.split(' ')[1], best });
       $('why').hidden = !offersWhy(ev);
       $('why').disabled = false;
       showPlan(pos.fen, ev.pv);
@@ -375,6 +427,7 @@ export function mountTrainer(root, doc, { migrateLegacyStats = false, storage = 
   // ---------- rendering ----------
 
   function showFeedback(kind, title, detail) {
+    if (kind !== 'bad' && kind !== 'good') feedbackFor = null;
     const el = $('feedback');
     el.className = kind;
     el.textContent = title;

@@ -111,6 +111,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 #engine { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; }
 #engine-line { margin: 0; color: var(--muted); }
+#engine-moves { margin: 4px 0 0; color: var(--muted); }
 #why { margin-top: 8px; }
 #plan { margin-top: 8px; }
 .plan-nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }

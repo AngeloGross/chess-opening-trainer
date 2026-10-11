@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createExplainer } from '../web/analysis/explainer.js';
 import {
-  engineLine, formatEval, materialText, offersWhy, passFen, planCaption, planGain, planSteps, playerMaterial, verdict,
+  engineLine, evalLabel, formatEval, materialText, offersWhy, passFen, planCaption, planGain, planSteps, playerMaterial, verdict, whiteCp,
 } from '../web/core/explain.js';
 import { MATE_CP, fenKey } from '../web/core/fen.js';
 import { settledMaterial } from '../web/core/material.js';
@@ -35,10 +35,18 @@ describe('eval line', () => {
     expect([89, -34, 4, -4, 100, 1234].map(formatEval)).toEqual(['+0.9', '−0.3', '0.0', '0.0', '+1.0', '+12.3']);
   });
 
-  it('names the eval and the material for the player', () => {
-    expect(engineLine({ evalCp: 100, material: 0 })).toBe('Engine: +1.0 for you · material equal');
-    expect(engineLine({ evalCp: -40, material: 1 })).toBe('Engine: −0.4 for you · you are a pawn up');
-    expect(engineLine({ evalCp: MATE_CP, material: -2 })).toBe('Engine: a forced mate for you · you are 2 pawns down');
+  it('names the eval, the best move and the material for the player', () => {
+    expect(engineLine({ evalCp: 100, material: 0, best: 'e4' })).toBe('Engine: +1.0 (White is better) after the best move, e4 · material equal');
+    expect(engineLine({ evalCp: -40, material: 1 })).toBe('Engine: −0.4 (Black is better) with best play · you are a pawn up');
+    expect(engineLine({ evalCp: MATE_CP, material: -2 })).toBe('Engine: a forced mate for White with best play · you are 2 pawns down');
+  });
+
+  it('shows the eval from White\'s side: Black to move and better is negative', () => {
+    expect(engineLine({ evalCp: 140, material: 0, turn: 'b', best: 'Bxe2' }))
+      .toBe('Engine: −1.4 (Black is better) after the best move, Bxe2 · material equal');
+    expect(whiteCp(-30, 'b')).toBe(30);
+    expect([24, -24, 25, -25, -MATE_CP].map(evalLabel)).toEqual(
+      ['+0.2 (about equal)', '−0.2 (about equal)', '+0.3 (White is better)', '−0.3 (Black is better)', 'a forced mate for Black']);
   });
 
   it('offers "Why?" from +0.8 without extra material and without a mate', () => {
@@ -106,7 +114,7 @@ describe('verdict', () => {
   it('static: the player keeps most of the advantage when passing', () => {
     const v = verdict({ fen: A40, evalCp: 100, passCp: 70, material: 0, pv: ['e2e4'] });
     expect(v.kind).toBe('static');
-    expect(v.text).toBe('Your position itself is better (+1.0): even if it were Black\'s move, you would keep +0.7.');
+    expect(v.text).toBe('Your position itself is better (+1.0): even if it were Black\'s move, the engine would still give +0.7.');
   });
 
   it('dynamic: the advantage is gone if he passes; names the best move', () => {
@@ -130,7 +138,8 @@ describe('verdict', () => {
   it('material up and mate have their own sentences; White is named for Black', () => {
     expect(verdict({ fen: BLACK_TO_MOVE, evalCp: 100, passCp: 90, material: 1 }).text).toBe(
       'You are a pawn up (once the captures on the board are played out).');
-    expect(verdict({ fen: BLACK_TO_MOVE, evalCp: 100, passCp: 90, material: 0 }).text).toContain('if it were White\'s move');
+    expect(verdict({ fen: BLACK_TO_MOVE, evalCp: 100, passCp: 90, material: 0 }).text).toBe(
+      'Your position itself is better (−1.0): even if it were White\'s move, the engine would still give −0.9.');
     expect(verdict({ fen: A40, evalCp: MATE_CP, passCp: 0, material: 0 })).toEqual({ kind: 'mate', text: 'You have a forced mate.', plan: null });
   });
 

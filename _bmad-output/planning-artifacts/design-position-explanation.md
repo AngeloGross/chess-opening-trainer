@@ -261,3 +261,19 @@ plan shows *how* it is used. Slice 3 adds *why* in concepts.
   after 5. e4 Ne7, step 2), D02 Qb3 (threat cxd5, step 1); no horizontal scroll at 390 px.
 - **For slice 4:** `tools/explain_report.mjs` already prints all explanations; the review page can be built
   from the same `data/why-positions.json`.
+
+## 13. Evals from White's side and after played moves (2026-10-11)
+
+Angelo asked for the usual eval notation and for the eval after played moves; the timing decision stays
+(no eval before the answer).
+- `core/explain.js` `evalLabel` / `whiteCp`: "+1.0 (White is better)", "−0.3 (Black is better)", "about equal"
+  below 25 cp. The eval line reads "Engine: −1.4 (Black is better) after the best move, Bxe2 · material
+  equal"; the move is named only when the browser search agrees with the answer's best move (the CLI's
+  native depth-14 search and the WASM search can differ), else "with best play". The verdict's numbers use
+  the same sign.
+- After a played move other than the best (wrong, or acceptable but not best), `trainer.js` searches the
+  position after it (`explainer.evaluation`, one search, remembered) and adds "After c4: +0.3 (White is
+  better)." to the feedback. The moves of the visit stay listed in the engine box ("After your moves: …")
+  across Retry until the position changes.
+- Checked in headless Edge: A40 c4 (+0.3, position +0.6) and a Black position (−0.4 after Bb7). Depth noise
+  shows: in B21 the browser engine prefers the usual "wrong" Bb7 of the CLI analysis.
